@@ -27,13 +27,29 @@ function assertType(obj, type) {
     return accumulator([],sa,n);
 }*/
 
+var equal_arr = function (arr1, arr2) {
+    if (arr1.length !== arr2.length) return false;
+    
+    for (var i = 0; i < arr1.length; i++) {
+        if (arr1[i] !== arr2[i]) // Also check objects
+            return false;
+    }
+}
+
+// Deal with objects, arrays (head, tail, deep comparison)
 var $wc = {}; // Fix this
+
+var rec_case = function () {
+    
+};
 
 var $match_with = function () {
     var args = arguments,
         len = args.length;
     
     return function (val) {
+        // Check for type
+        
         for (var i = 0; i < len; i++) {
             var matching = args[i];
             
@@ -47,6 +63,11 @@ var $match_with = function () {
         }
     };
 };
+
+var sum = $match_with(
+    [[],                  function () { return 0 }],
+    [rec_case('x', 'xs'), function () { return x + sum (xs) }]
+);
 
 /*var fact = fun(
     [0, function ()  1],
