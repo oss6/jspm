@@ -1,4 +1,15 @@
-var $pattern_match = (function (undefined) {
+;(function () {
+    var root = this;
+    var prev = root.$pm;
+    
+    var $pm = function(obj) {
+        if (obj instanceof $pm) return obj;
+        if (!(this instanceof $pm)) return new $pm(obj);
+        this._wrapped = obj;
+    };
+    
+    $pm.VERSION = '0.1.1';
+    
     // Exceptions
     function MatchingExprException(message) {
         this.message = message;
@@ -12,32 +23,7 @@ var $pattern_match = (function (undefined) {
     var is_array = function (obj) {
         return Object.prototype.toString.call(obj) === '[object Array]'; 
     };
-
-    /*function curry(func,args,space) {
-        var n  = func.length - args.length; //arguments still to come
-        var sa = Array.prototype.slice.apply(args); // saved accumulator array
-        function accumulator(moreArgs,sa,n) {
-            var saPrev = sa.slice(0); // to reset
-            var nPrev  = n; // to reset
-            for(var i=0;i<moreArgs.length;i++,n--) {
-                sa[sa.length] = moreArgs[i];
-            }
-            if ((n-moreArgs.length)<=0) {
-                var res = func.apply(space,sa);
-                // reset vars, so curried function can be applied to new params.
-                sa = saPrev;
-                n  = nPrev;
-                return res;
-            } else {
-                return function (){
-                    // arguments are params, so closure bussiness is avoided.
-                    return accumulator(arguments,sa.slice(0),n);
-                }
-            }
-        }
-        return accumulator([],sa,n);
-    }*/
-
+    
     var equal_arr = function (arr1, arr2) {
         if (arr1.length !== arr2.length) return false;
 
@@ -53,8 +39,8 @@ var $pattern_match = (function (undefined) {
     var rec_case = function () {
 
     };
-
-    var on = function () {
+    
+    $pm.on = function () {
         var args = arguments,
             len = args.length;
 
@@ -115,18 +101,10 @@ var $pattern_match = (function (undefined) {
         };
     };
     
-    return {
-        on: on
+    // AMD registration
+    if (typeof define === "function" && define.amd) {
+        define("pm", [], function() {
+            return $pm;
+        });
     }
-    /*var sum = $pattern_match.on(
-        function () { return 0 },
-        function (x, xs) {
-            return x + sum (xs)
-        }
-    );*/
-
-    /*var fact = fun(
-        [0, function ()  1],
-        [wc, function (n) n * fact(n - 1)]
-    );*/
-})();
+}.call(this));

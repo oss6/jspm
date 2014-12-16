@@ -1,0 +1,11 @@
+{
+    "name": "jspm",
+    "main": "jspm.js",
+    "version": "0.1.1",
+    "homepage": "https://github.com/oss6/jspm",
+    "authors": ["Ossama <ossedb@gmail.com>"],
+    "description": "Pattern matching implementation in JS",
+    "keywords": ["pattern", "matching", "functional"],
+    "license": "MIT",
+    "ignore": ["**/.*", "node_modules", "bower_components", "test", "docs", "index.html"]
+}
