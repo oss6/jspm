@@ -8,17 +8,27 @@
         this._wrapped = obj;
     };
     
+    // Expose $pm object (NodeJS and window)
+    if (typeof exports !== 'undefined') {
+        if (typeof module !== 'undefined' && module.exports) {
+            exports = module.exports = $pm;
+        }
+        exports.$pm = $pm;
+    } else {
+        root.$pm = $pm;
+    }
+    
     $pm.VERSION = '0.1.1';
     
     // Exceptions
-    function MatchingExprException(message) {
+    function PatternMatchingException(message) {
         this.message = message;
-        this.name = 'MatchingExprException';
+        this.name = 'PatternMatchingException';
     }
-
+    
     var assertType = function (obj, type) {
         return obj.constructor.name === type.name
-    }
+    };
 
     var is_array = function (obj) {
         return Object.prototype.toString.call(obj) === '[object Array]'; 
@@ -31,20 +41,52 @@
             if (arr1[i] !== arr2[i]) // Also check objects
                 return false;
         }
-    }
+    };
 
     // Deal with objects, arrays (head, tail, deep comparison)
     var $wc = {}; // Fix this
 
-    var rec_case = function () {
-
+    var type_check = function (arr, type) {
+        var i, len = arr.length;
+        
+        for (i = 0; i < len; i++)
+            if (!assertType(arr[i], type))
+                return false;
+        return true;
+    };
+    
+    var exhaustiveness_check = function (arr) {
+        // Assumes that all patterns have the same type
+        var i, len = arr.length;
+        
+        for (i = 0; i < len; i++) {
+            
+        }
+        
+        return true;
+    };
+    
+    var get_patterns = function (args) {
+        return args.map(function (e) {
+            return e[0];
+        });
+    };
+    
+    $pm.def_type = function() {
+        var args = arguments,
+            len = args.length;
+        
+        for (var i = 0; i < len; i++) {
+              
+        }
     };
     
     $pm.on = function () {
-        var args = arguments,
+        var args = Array.prototype.slice.call(arguments), // prevents optimizations in JavaScript engines (V8)
             len = args.length;
 
         return function (val) {
+            var type = val.constructor;
             // Type and exhaustiveness checking
             /*var type = val.constructor.name;
             
@@ -52,12 +94,16 @@
                 var matching = args[i];
 
                 if (!is_array(matching) || matching.length !== 2 || !assertType(matching[0],type))
-                    throw new MatchingExprException('Matching expression not well defined');
+                    throw new PatternMatchingException('Matching expression not well defined');
             }*/
             
             // Pattern matching on list (array) (check also arguments)
             if (is_array(val)) {
                 var arr_len = val.length;
+                
+                // Type and exhaustiveness checking
+                if (!type_check(args, type)) throw new PatternMatchingException('Not compatible types');
+                if (!exhaustiveness_check(args)) throw PatternMatchingException('Pattern matching not exhaustive');
                 
                 for (var i = 0; i < len; i++) {
                     var fn = args[i],
@@ -74,7 +120,7 @@
                         
                         // Push tail
                         inst.push(val.slice(j));
-                        console.log(inst);
+                        
                         // Apply
                         return fn.apply(this, inst);
                     }
@@ -85,6 +131,13 @@
             }
             // Pattern matching on numbers and string
             else {
+                var patterns = get_patterns(args);
+                
+                if (!type_check(patterns, type))
+                    throw new PatternMatchingException('Not compatible types');
+                if (!exhaustiveness_check(patterns))
+                    throw PatternMatchingException('Pattern matching not exhaustive');
+                
                 for (var i = 0; i < len; i++) {
                     var matching = args[i];
 
@@ -107,4 +160,5 @@
             return $pm;
         });
     }
+    else return $pm
 }.call(this));
