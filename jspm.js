@@ -80,7 +80,7 @@ var $pattern_match = (function (undefined) {
                     if (arr_len === 0 && params === 0) {
                         return fn.apply(this, []);
                     }
-                    else if (arr_len >= params && params !== 0) {
+                    else if (arr_len >= params - 1 && params !== 0) {
                         var inst = [], j;
                         
                         for (j = 0; j < params - 1; j++)
