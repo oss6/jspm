@@ -59,26 +59,57 @@ var $pattern_match = (function (undefined) {
             len = args.length;
 
         return function (val) {
-            // Type checking
-            var type = val.constructor.name;
+            // Type and exhaustiveness checking
+            /*var type = val.constructor.name;
             
             for (var i = 0; i < len; i++) {
                 var matching = args[i];
 
                 if (!is_array(matching) || matching.length !== 2 || !assertType(matching[0],type))
                     throw new MatchingExprException('Matching expression not well defined');
-            }
-
-            for (var i = 0; i < len; i++) {
-                var matching = args[i];
+            }*/
+            
+            // Pattern matching on list (array) (check also arguments)
+            if (is_array(val)) {
+                var arr_len = val.length;
                 
-                // Numbers and strings
-                if (val === matching[0] || matching[0] === $wc) {
-                    if (matching[1].length === 0)
-                        return matching[1].call(this);
-                    else if (matching[1].length === 1)
-                        return matching[1].call(this, val);
-                    else {}
+                for (var i = 0; i < len; i++) {
+                    var fn = args[i],
+                        params = fn.length;
+                    
+                    if (arr_len === 0 && params === 0) {
+                        return fn.apply(this, []);
+                    }
+                    else if (arr_len >= params && params !== 0) {
+                        var inst = [], j;
+                        
+                        for (j = 0; j < params - 1; j++)
+                            inst.push(val[j]);
+                        
+                        // Push tail
+                        inst.push(val.slice(j));
+                        console.log(inst);
+                        // Apply
+                        return fn.apply(this, inst);
+                    }
+                    /*else {
+                        // throw exception   
+                    }*/
+                }
+            }
+            // Pattern matching on numbers and string
+            else {
+                for (var i = 0; i < len; i++) {
+                    var matching = args[i];
+
+                    // Numbers and strings
+                    if (val === matching[0] || matching[0] === $wc) {
+                        if (matching[1].length === 0)
+                            return matching[1].call(this);
+                        else if (matching[1].length === 1)
+                            return matching[1].call(this, val);
+                        else {}
+                    }
                 }
             }
         };
@@ -88,8 +119,10 @@ var $pattern_match = (function (undefined) {
         on: on
     }
     /*var sum = $pattern_match.on(
-        [[],                  function () { return 0 }],
-        [rec_case('x', 'xs'), function () { return x + sum (xs) }]
+        function () { return 0 },
+        function (x, xs) {
+            return x + sum (xs)
+        }
     );*/
 
     /*var fact = fun(
