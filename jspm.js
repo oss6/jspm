@@ -27,9 +27,17 @@
     }
     
     var assertType = function (obj, type) {
-        return obj.constructor.name === type.name
+        return obj.constructor.name === type.name;
     };
-
+    
+    var assertDefType = function(obj, type) {
+        return obj._type === type.name;
+    }
+    
+    var is_obj = function (obj) {
+        return Object.prototype.toString.call(obj) === '[object Object]';   
+    }
+    
     var is_array = function (obj) {
         return Object.prototype.toString.call(obj) === '[object Array]'; 
     };
@@ -72,29 +80,48 @@
         });
     };
     
-    $pm.def_type = function() {
-        var args = arguments, len = args.length, i;
+    $pm.type = function (name) {
+        $pm[name] = function Prova () {}; // Fix this
+        return $pm;
+    }
+    
+    // type nat = Zero | Suc of nat;;
+    $pm.def = function(obj) {
+        if (!is_obj(obj)) return PatternMatchingException('Expected object as input');
         
-        for (var i = 0; i < len; i++) {
-            var val = args[i], cons;
+        for (k in obj) {
             
-            if (is_array(val)) {
+            $pm[k] = function () {
+                var arg_len = arguments.length;
                 
-            }
-            else {
-                $pm[val] = function () {
-                       
-                };
+                
+                
+                if (!(arguments.length === 0 && obj[k] === undefined) || !(assertDefType(arguments[0], obj[k])))
+                    throw new
+                    PatternMatchingException('This expression has type string but an expression was expected of type int');
+                
+                if (arguments.length === 1) this.value = arguments[0];
+            };
+            
+            //$pm[k] = {};
+            $pm[k]._type = "type"; // Fix this
+            
+            if (obj[k] !== undefined) {
+                $pm[k]._of = obj[k].name;
+                $pm[k]._offun = obj[k];
             }
         }
+        
     };
     
     $pm.function = function () {
         var args = Array.prototype.slice.call(arguments), // prevents optimizations in JavaScript engines (V8)
             len = args.length;
 
-        return function (val) {
+        return function (val) { // Multiple arguments
             if (val === undefined) throw new PatternMatchingException('Error!');
+            
+            // Check if we are dealing with arrays or other data
             
             var type = val.constructor;
             
@@ -113,7 +140,7 @@
                     if (arr_len === 0 && params === 0) {
                         return fn.apply(this, []);
                     }
-                    else if (arr_len >= params - 1 && params !== 0) {
+                    else if ((arr_len >= params && params !== 0) || (arr_len === 1 && params === 2)) {
                         var inst = [], j;
                         
                         for (j = 0; j < params - 1; j++)
