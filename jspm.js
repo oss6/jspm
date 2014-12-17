@@ -73,36 +73,37 @@
     };
     
     $pm.def_type = function() {
-        var args = arguments,
-            len = args.length;
+        var args = arguments, len = args.length, i;
         
         for (var i = 0; i < len; i++) {
-              
+            var val = args[i], cons;
+            
+            if (is_array(val)) {
+                
+            }
+            else {
+                $pm[val] = function () {
+                       
+                };
+            }
         }
     };
     
-    $pm.on = function () {
+    $pm.function = function () {
         var args = Array.prototype.slice.call(arguments), // prevents optimizations in JavaScript engines (V8)
             len = args.length;
 
         return function (val) {
-            var type = val.constructor;
-            // Type and exhaustiveness checking
-            /*var type = val.constructor.name;
+            if (val === undefined) throw new PatternMatchingException('Error!');
             
-            for (var i = 0; i < len; i++) {
-                var matching = args[i];
-
-                if (!is_array(matching) || matching.length !== 2 || !assertType(matching[0],type))
-                    throw new PatternMatchingException('Matching expression not well defined');
-            }*/
+            var type = val.constructor;
             
             // Pattern matching on list (array) (check also arguments)
             if (is_array(val)) {
                 var arr_len = val.length;
                 
                 // Type and exhaustiveness checking
-                if (!type_check(args, type)) throw new PatternMatchingException('Not compatible types');
+                if (!type_check(args, Function.constructor)) throw new PatternMatchingException('Not compatible types');
                 if (!exhaustiveness_check(args)) throw PatternMatchingException('Pattern matching not exhaustive');
                 
                 for (var i = 0; i < len; i++) {
@@ -129,7 +130,7 @@
                     }*/
                 }
             }
-            // Pattern matching on numbers and string
+            // Pattern matching on numbers, strings, booleans and objects
             else {
                 var patterns = get_patterns(args);
                 
