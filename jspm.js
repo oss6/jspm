@@ -68,31 +68,68 @@
     var equal_arr = function (arr1, arr2) {
         if (arr1.length !== arr2.length) return false;
 
-        for (var i = 0; i < arr1.length; i++) {
+        for (var i = 0; i < arr1.length; i++)
             if (arr1[i] !== arr2[i]) // Also check objects
                 return false;
-        }
     };
-
-    // Deal with objects, arrays (head, tail, deep comparison)
-    var $wc = {}; // Fix this
-
+    
     var type_check = function (arr, type) {
         var i, len = arr.length;
         
         for (i = 0; i < len; i++)
-            if (!assertType(arr[i], type))
+            if (!assertType(arr[i], type) && arr[i] !== $pm._ && arr[i] !== $pm.$) // Also parameter!!!
                 return false;
         return true;
     };
     
-    var exhaustiveness_check = function (arr) {
-        // Assumes that all patterns have the same type
-        var i, len = arr.length;
+    var redundancy_check = function (arr, type) {
+        var i, len = arr.length, track = [], type_name = type.name;
         
-        for (i = 0; i < len; i++) {
+        if (type_name === 'Array') {
+            arr = arr.map(function (fn) {
+                return fn === $pm._ ? -1 : fn.length; // Also parameter!!!
+            });
+            
+            for (i = 0; i < len; i++) {
+                if (track.indexOf(arr[i])) return false;
+                track.push(arr[i]);
+            }
+        }
+        else if (type === 'Number' || type_name === 'String' || type_name === 'Boolean') {
+            
+            for (i = 0; i < len; i++) {
+                if (track.indexOf(arr[i]) !== -1) return false;
+                track.push(arr[i]);
+            }
+        }
+        else {
+               
+        }
+        console.log("heyyyy");
+        return true;
+    }
+    
+    var exhaustiveness_check = function (arr, type) {
+        // Assumes that all patterns have the same type and there are no redundancies
+        var i, len = arr.length, type_name = type.name;
+        
+        /*if (type_name === 'Array') {
             
         }
+        else if (type_name === 'Number' || type_name === 'String' || type_name === 'Boolean') {
+        
+        }
+        else {
+               
+        }*/
+        
+        /*for (i = 0; i < len; i++) {
+            if (arr[i] === $pm._) // Also parameter
+                return true;
+        }
+        
+        
+        return false;*/
         
         return true;
     };
@@ -103,13 +140,13 @@
         });
     };
     
-    $pm.type = function (name) {
+    $pm.data = function (name) {
         $pm[name] = function Prova () {}; // Fix this
         return $pm;
     };
     
     // type nat = Zero | Suc of nat;;
-    $pm.def = function(obj) {
+    $pm.cons = function(obj) {
         if (!is_obj(obj)) return PatternMatchingException('Expected object as input');
         
         for (k in obj) {
@@ -119,11 +156,11 @@
                 
                 
                 
-                if (!(arguments.length === 0 && obj[k] === undefined) || !(assertDefType(arguments[0], obj[k])))
+                if (!(arg_len === 0 && obj[k] === undefined) || !(assertDefType(arguments[0], obj[k])))
                     throw new
                     PatternMatchingException('This expression has type string but an expression was expected of type int');
                 
-                if (arguments.length === 1) this.value = arguments[0];
+                if (arg_len === 1) this.value = arguments[0];
             };
             
             $pm[k]._type = "type"; // Fix this
@@ -136,25 +173,27 @@
         
     };
     
-    // use bindings
     var match_array = function (args, val, bindings) {
         var arr_len = val.length,
             len = args.length,
             type = val.constructor;
         
-        // Type and exhaustiveness checking
+        // Type, redundancy and exhaustiveness checking
         if (!type_check(args, Function.constructor)) throw new PatternMatchingException('Not compatible types');
-        if (!exhaustiveness_check(args)) throw PatternMatchingException('Pattern matching not exhaustive');
+        if (!redundancy_check(args, Array)) throw new PatternMatchingException('Redundant pattern matching');
+        if (!exhaustiveness_check(args, Array)) throw PatternMatchingException('Pattern matching not exhaustive');
         
         // Binding
         args = args.map(function (fn) {
-            fn.o = bindings;
-            return fn;
+            return fn.bind(bindings);
         });
         
         for (var i = 0; i < len; i++) {
-            var fn = args[i],
-                params = fn.length;
+            var fn = args[i];
+            
+            //if (fn === $pm._) return fn.apply(this, val); // Wild card matching (also par)
+            
+            var params = fn.length;    
             
             // Empty list
             if (arr_len === 0 && params === 0) {
@@ -185,18 +224,13 @@
             len = args.length,
             type = val.constructor;
         
-        if (!type_check(patterns, type))
-            throw new PatternMatchingException('Not compatible types');
-        
-        if (!exhaustiveness_check(patterns))
-            throw PatternMatchingException('Pattern matching not exhaustive');
+        if (!type_check(patterns, type)) throw new PatternMatchingException('Not compatible types');
+        if (!redundancy_check(args, type)) throw new PatternMatchingException('Redundant pattern matching');
+        if (!exhaustiveness_check(patterns, type)) throw PatternMatchingException('Pattern matching not exhaustive');
         
         // Binding
         args = args.map(function (pattern) {
-            var fun = pattern[1],
-                newf = fun.bind(bindings);
-            
-            return [pattern[0], newf];
+            return [pattern[0], pattern[1].bind(bindings)];
         });
         
         for (var i = 0; i < len; i++) {
@@ -205,8 +239,10 @@
                 fn = matching[1];
             
             // Numbers, strings, booleans and OBJECTS!
-            if (val === pattern) { // wildcard
-                return fn.length === 1 ? fn.call(null, val) : fn.call(null);
+            if (val === pattern || pattern === $pm._ || pattern === $pm.$) {
+                return (fn.length === 1 && pattern === $pm.$) ?
+                        fn.call(null, $pm.$(val).name) : // Parameter
+                        fn.call(null);
             }
         }
     };
@@ -219,19 +255,34 @@
     $pm.function = function () {
         // prevents optimizations in JavaScript engines (V8)
         var args = Array.prototype.slice.call(arguments);
-        // var len = args.length;
         
-        return function (val, obj) { // Multiple arguments (val, obj)
-            // Pattern matching on list (array) (check also arguments)
+        // Type checking here
+        
+        return function (val, obj) {
+            // Pattern matching on list (array)
             if (is_array(val))
                 return match_array(args, val, obj);
-            // Pattern matching on defined types
-            /*else if (is_deft(bindings[0]))
-                return match_deft(args, val, rest);*/
-            // Pattern matching on numbers, strings, booleans and objects
+            // Pattern matching on numbers, strings, booleans and (objects)
             else if (is_atom(val))
                 return match_atom(args, val, obj);
+            // Pattern matching on defined types
+            /*else if (is_deft(bindings[0]))
+                return match_deft(args, val, obj);*/
         };
+    };
+    
+    // Wild card (throw result)
+    $pm._ = (function () {
+        function Wildcard() {}
+        return new Wildcard();
+    })();
+    
+    // Parameter
+    $pm.$ = function (name) {
+        function Parameter(n) { 
+            this.name = n;
+        }
+        return new Parameter(name);
     };
     
     // AMD registration
@@ -240,5 +291,5 @@
             return $pm;
         });
     }
-    else return $pm
+    else return $pm;
 }.call(this));
