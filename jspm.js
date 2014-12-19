@@ -137,16 +137,21 @@
     };
     
     // use bindings
-    var match_array = function (args, bindings) {
-        var val = bindings[0],
-            arr_len = val.length,
+    var match_array = function (args, val, bindings) {
+        var arr_len = val.length,
             len = args.length,
             type = val.constructor;
         
         // Type and exhaustiveness checking
         if (!type_check(args, Function.constructor)) throw new PatternMatchingException('Not compatible types');
         if (!exhaustiveness_check(args)) throw PatternMatchingException('Pattern matching not exhaustive');
-
+        
+        // Binding
+        args = args.map(function (fn) {
+            fn.o = bindings;
+            return fn;
+        });
+        
         for (var i = 0; i < len; i++) {
             var fn = args[i],
                 params = fn.length;
@@ -175,9 +180,8 @@
         }
     };
     
-    var match_atom = function (args, bindings) {
-        var val = bindings[0],
-            patterns = get_patterns(args),
+    var match_atom = function (args, val, bindings) {
+        var patterns = get_patterns(args),
             len = args.length,
             type = val.constructor;
         
@@ -187,6 +191,14 @@
         if (!exhaustiveness_check(patterns))
             throw PatternMatchingException('Pattern matching not exhaustive');
         
+        // Binding
+        args = args.map(function (pattern) {
+            var fun = pattern[1],
+                newf = fun.bind(bindings);
+            
+            return [pattern[0], newf];
+        });
+        
         for (var i = 0; i < len; i++) {
             var matching = args[i],
                 pattern = matching[0],
@@ -194,12 +206,12 @@
             
             // Numbers, strings, booleans and OBJECTS!
             if (val === pattern) { // wildcard
-                return fn.apply(null, bindings);
+                return fn.length === 1 ? fn.call(null, val) : fn.call(null);
             }
         }
     };
     
-    var match_deft = function (args, val, o) {
+    var match_deft = function (args, val, bindings) {
         
     };
     
@@ -209,21 +221,16 @@
         var args = Array.prototype.slice.call(arguments);
         // var len = args.length;
         
-        return function () { // Multiple arguments
-            var bindings = Array.prototype.slice.call(arguments);
-            
-            if (bindings.length < 1) throw new PatternMatchingException('Error!');
-            var val = bindings[0];
-            
+        return function (val, obj) { // Multiple arguments (val, obj)
             // Pattern matching on list (array) (check also arguments)
-            if (is_array(bindings[0]))
-                return match_array(args, bindings);
+            if (is_array(val))
+                return match_array(args, val, obj);
             // Pattern matching on defined types
             /*else if (is_deft(bindings[0]))
                 return match_deft(args, val, rest);*/
             // Pattern matching on numbers, strings, booleans and objects
-            else if (is_atom(bindings[0]))
-                return match_atom(args, bindings);
+            else if (is_atom(val))
+                return match_atom(args, val, obj);
         };
     };
     
