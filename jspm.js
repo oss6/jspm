@@ -30,8 +30,8 @@
         return obj.constructor.name === type.name;
     };
     
-    var assertDefType = function(obj, type) {
-        return obj._type === type.name;
+    var assertDefType = function (obj, type, of) {
+        return (of ? obj.of : obj.type) === type.name;
     };
     
     var is_obj = function (obj) {
@@ -61,21 +61,45 @@
         return Object.prototype.toString.call(obj) === '[object Array]'; 
     };
     
-    var is_deft = function (val) {
-          
+    var is_cons = function (val) {
+        return val.type !== undefined;
     };
     
     var infer_type = function (args) {
-           
-    };
-    
-    var type_check = function (arr, type) {
-        var i, len = arr.length;
+        var i = 0,
+            len = args.length;
         
-        for (i = 0; i < len; i++)
-            if (!assertType(arr[i], type) && arr[i] !== $pm._ && arr[i] !== $pm.$) // Also parameter!!!
-                return false;
-        return true;
+        // Check consistency
+        
+        
+        var atom_m = [], track_type;
+        
+        // Check for atom matching
+        for (; i < len; i++) {
+            var pattern = args[i];
+            if (is_array(pattern))
+                atom_m.push(pattern);
+        }
+        
+        if (atom_m.length >= len) {
+            args = args.map(function (p) {
+                return p[0]; 
+            });
+        }
+        
+        for (i = 0; i < len; i++) {
+            var pattern = args[i],
+                current_type;
+            
+            if (pattern !== $pm._ && pattern !== $pm.$) {
+                current_type = (pattern.type === undefined ? pattern.constructor.name : pattern.type);
+                
+                if (current_type !== track_type) throw new PatternMatchingException('Not the same type'); // Fix
+                track_type = current_type;
+            }
+        }
+        
+        return track_type;
     };
     
     var redundancy_check = function (arr, type) {
@@ -101,18 +125,18 @@
         else {
                
         }
-        console.log("heyyyy");
+        
         return true;
     }
     
     var exhaustiveness_check = function (arr, type) {
         // Assumes that all patterns have the same type and there are no redundancies
-        var i, len = arr.length, type_name = type.name;
+        var i, len = arr.length;
         
-        /*if (type_name === 'Array') {
+        /*if (type === 'Array') {
             
         }
-        else if (type_name === 'Number' || type_name === 'String' || type_name === 'Boolean') {
+        else if (type === 'Number' || type === 'String' || type === 'Boolean') {
         
         }
         else {
@@ -136,45 +160,41 @@
         });
     };
     
-    $pm.Type = function (name) {
-        var that = this;
-        this.name = name;
+    $pm.type = function (name, obj) {
+        if (!is_obj(obj)) return PatternMatchingException('Expected object as input');
         
-        this.cons = function (obj) {
-            if (!is_obj(obj)) return PatternMatchingException('Expected object as input');
-            
-            for (k in obj) {
-
-                $pm[k] = function () {
-                    var arg_len = arguments.length;
-
-                    if (!(arg_len === 0 && obj[k] === undefined) || !(assertDefType(arguments[0], obj[k])))
-                        throw new
-                        PatternMatchingException('This expression has type string but an' +
-                                                 ' expression was expected of type int');
-
-                    if (arg_len === 1) this.value = arguments[0];
-                };
-
-                $pm[k]._type = that;
-
-                if (obj[k] !== undefined) {
-                    $pm[k]._of = obj[k].name;
-                    $pm[k]._offun = obj[k];
-                }
-            }
-            
-            that._constructors = obj;
+        $pm[name] = {
+            'name': name,
+            'cons': {}
         };
         
-        $pm[name] = this;
-        return this;
+        for (k in obj) {
+            $pm[k] = function () {
+                var arg_len = arguments.length;
+
+                if (!(arg_len === 0 && obj[k] === undefined) || !(assertDefType(arguments[0], obj[k], false)))
+                    throw new
+                    PatternMatchingException('This expression has type string but an' +
+                                             ' expression was expected of type int');
+
+                if (arg_len === 1) this.value = arguments[0];
+            };
+
+            $pm[k].type = name;
+
+            if (obj[k] !== undefined) {
+                $pm[k].of = obj[k].name;
+                $pm[k].offun = obj[k];
+            }
+        }
+        
+        $pm[name].cons = obj; // Set constructors
     };
     
     $pm.remove_type = function (name) {
         // Delete all constructors
         var tobj = $pm[name],
-            cons = tobj._constructors;
+            cons = tobj.cons;
         
         for (k in cons)
             delete $pm[k];
@@ -186,11 +206,6 @@
         var arr_len = val.length,
             len = args.length,
             type = val.constructor;
-        
-        // Type, redundancy and exhaustiveness checking
-        if (!type_check(args, Function.constructor)) throw new PatternMatchingException('Not compatible types');
-        if (!redundancy_check(args, Array)) throw new PatternMatchingException('Redundant pattern matching');
-        if (!exhaustiveness_check(args, Array)) throw PatternMatchingException('Pattern matching not exhaustive');
         
         // Binding
         args = args.map(function (fn) {
@@ -233,10 +248,6 @@
             len = args.length,
             type = val.constructor;
         
-        if (!type_check(patterns, type)) throw new PatternMatchingException('Not compatible types');
-        if (!redundancy_check(args, type)) throw new PatternMatchingException('Redundant pattern matching');
-        if (!exhaustiveness_check(patterns, type)) throw PatternMatchingException('Pattern matching not exhaustive');
-        
         // Binding
         args = args.map(function (pattern) {
             return [pattern[0], pattern[1].bind(bindings)];
@@ -265,8 +276,12 @@
         // prevents optimizations in JavaScript engines (V8)
         var args = Array.prototype.slice.call(arguments);
         
-        // Type checking here (first infer type)
-                
+        // Infer type and check for redundancies and exhaustiveness
+        var type = infer_type(args);
+        
+        if (!redundancy_check(args, type)) throw new PatternMatchingException('Redundant pattern matching');
+        if (!exhaustiveness_check(args, type)) throw PatternMatchingException('Pattern matching not exhaustive');
+        
         return function (val, obj) {
             // Pattern matching on list (array)
             if (is_array(val))
@@ -275,8 +290,8 @@
             else if (is_atom(val))
                 return match_atom(args, val, obj);
             // Pattern matching on defined types
-            /*else if (is_deft(bindings[0]))
-                return match_deft(args, val, obj);*/
+            else if (is_cons(val))
+                return match_deft(args, val, obj);
         };
     };
     
