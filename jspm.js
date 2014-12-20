@@ -65,12 +65,8 @@
           
     };
     
-    var equal_arr = function (arr1, arr2) {
-        if (arr1.length !== arr2.length) return false;
-
-        for (var i = 0; i < arr1.length; i++)
-            if (arr1[i] !== arr2[i]) // Also check objects
-                return false;
+    var infer_type = function (args) {
+           
     };
     
     var type_check = function (arr, type) {
@@ -140,37 +136,50 @@
         });
     };
     
-    $pm.data = function (name) {
-        $pm[name] = function Prova () {}; // Fix this
-        return $pm;
+    $pm.Type = function (name) {
+        var that = this;
+        this.name = name;
+        
+        this.cons = function (obj) {
+            if (!is_obj(obj)) return PatternMatchingException('Expected object as input');
+            
+            for (k in obj) {
+
+                $pm[k] = function () {
+                    var arg_len = arguments.length;
+
+                    if (!(arg_len === 0 && obj[k] === undefined) || !(assertDefType(arguments[0], obj[k])))
+                        throw new
+                        PatternMatchingException('This expression has type string but an' +
+                                                 ' expression was expected of type int');
+
+                    if (arg_len === 1) this.value = arguments[0];
+                };
+
+                $pm[k]._type = that;
+
+                if (obj[k] !== undefined) {
+                    $pm[k]._of = obj[k].name;
+                    $pm[k]._offun = obj[k];
+                }
+            }
+            
+            that._constructors = obj;
+        };
+        
+        $pm[name] = this;
+        return this;
     };
     
-    // type nat = Zero | Suc of nat;;
-    $pm.cons = function(obj) {
-        if (!is_obj(obj)) return PatternMatchingException('Expected object as input');
+    $pm.remove_type = function (name) {
+        // Delete all constructors
+        var tobj = $pm[name],
+            cons = tobj._constructors;
         
-        for (k in obj) {
-            
-            $pm[k] = function () {
-                var arg_len = arguments.length;
-                
-                
-                
-                if (!(arg_len === 0 && obj[k] === undefined) || !(assertDefType(arguments[0], obj[k])))
-                    throw new
-                    PatternMatchingException('This expression has type string but an expression was expected of type int');
-                
-                if (arg_len === 1) this.value = arguments[0];
-            };
-            
-            $pm[k]._type = "type"; // Fix this
-            
-            if (obj[k] !== undefined) {
-                $pm[k]._of = obj[k].name;
-                $pm[k]._offun = obj[k];
-            }
-        }
+        for (k in cons)
+            delete $pm[k];
         
+        delete $pm[name];
     };
     
     var match_array = function (args, val, bindings) {
@@ -256,8 +265,8 @@
         // prevents optimizations in JavaScript engines (V8)
         var args = Array.prototype.slice.call(arguments);
         
-        // Type checking here
-        
+        // Type checking here (first infer type)
+                
         return function (val, obj) {
             // Pattern matching on list (array)
             if (is_array(val))
