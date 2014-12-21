@@ -8,3 +8,18 @@ jspm allows to use the expressivenes and power of pattern matching using Javascr
 Introduction
 ------------
 Pattern matching is
+
+Features of jspm
+----------------
+
+Pattern match on atoms
+----------------------
+
+Pattern match on arrays
+-----------------------
+
+Defined types
+-------------
+
+Pattern match on defined types
+------------------------------
