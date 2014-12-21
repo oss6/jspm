@@ -23,3 +23,8 @@ Defined types
 
 Pattern match on defined types
 ------------------------------
+
+Next release
+------------
+In the next release jspm will support **guards** as well as more syntactic sugar for both pattern matching and
+sum type definition.

@@ -1,24 +1,29 @@
+// jspm - Pattern matching in Javascript
+// Author: Ossama Edbali
+// Description: pattern matching implementation using JS
+// Version: 0.1.1
+
 ;(function () {
     var root = this;
-    var prev = root.$pm;
+    var prev = root.$p;
     
-    var $pm = function(obj) {
-        if (obj instanceof $pm) return obj;
-        if (!(this instanceof $pm)) return new $pm(obj);
+    var $p = function(obj) {
+        if (obj instanceof $p) return obj;
+        if (!(this instanceof $p)) return new $p(obj);
         this._wrapped = obj;
     };
     
-    // Expose $pm object (NodeJS and window)
+    // Expose $p object (NodeJS and window)
     if (typeof exports !== 'undefined') {
         if (typeof module !== 'undefined' && module.exports) {
-            exports = module.exports = $pm;
+            exports = module.exports = $p;
         }
-        exports.$pm = $pm;
+        exports.$p = $p;
     } else {
-        root.$pm = $pm;
+        root.$p = $p;
     }
     
-    $pm.VERSION = '0.1.1';
+    $p.VERSION = '0.1.1';
     
     // Exceptions
     function PatternMatchingException(message) {
@@ -85,7 +90,7 @@
             var pattern = args[i],
                 current_type;
             
-            if (pattern !== $pm._ && pattern !== $pm.$) {
+            if (pattern !== $p._ && pattern !== $p.$) {
                 current_type = (pattern.type === undefined ? pattern.constructor.name : pattern.type);
                 if (i === 0) track_type = current_type;
                 
@@ -102,7 +107,7 @@
         
         if (type === 'Array') {
             /*arr = arr.map(function (fn) {
-                return fn === $pm._ ? -1 : fn.length; // Also parameter!!!
+                return fn === $p._ ? -1 : fn.length; // Also parameter!!!
             });*/
             
             for (i = 0; i < len; i++) {
@@ -153,15 +158,15 @@
             arr = get_patterns(arr);
             
             for (i = 0; i < len; i++)
-                if (arr[i] === $pm._ || arr[i] === $pm.$)
+                if (arr[i] === $p._ || arr[i] === $p.$)
                     return true;
         }
         else {
-            var cons = $pm[type].cons,
+            var cons = $p[type].cons,
                 checked = [];
             
             for (i = 0; i < len; i++) {
-                if (arr[i] === $pm._)
+                if (arr[i] === $p._)
                     return true;
                 
                 checked.push(arr[i]);
@@ -198,38 +203,6 @@
         };
     };
     
-    $pm.data = function (name, obj) {
-        if (!is_obj(obj)) return PatternMatchingException('Expected object as input');
-        
-        $pm[name] = {
-            'name': name,
-            'cons': {}
-        };
-        
-        for (k in obj) {
-            $pm[k] = create_cons_fun(obj, k, name);
-            $pm[k].type = name;
-            
-            if (obj[k] !== undefined) {
-                $pm[k].of = obj[k].name;
-                $pm[k].offun = obj[k];
-            }
-        }
-        
-        $pm[name].cons = obj; // Set constructors
-    };
-    
-    $pm.remove_type = function (name) {
-        // Delete all constructors
-        var tobj = $pm[name],
-            cons = tobj.cons;
-        
-        for (k in cons)
-            delete $pm[k];
-        
-        delete $pm[name];
-    };
-    
     var match_array = function (args, val, bindings) {
         var arr_len = val.length,
             len = args.length,
@@ -243,7 +216,7 @@
         for (var i = 0; i < len; i++) {
             var fn = args[i];
             
-            //if (fn === $pm._) return fn.apply(this, val); // Wild card matching (also par)
+            //if (fn === $p._) return fn.apply(this, val); // Wild card matching (also par)
             
             var params = fn.length;    
             
@@ -255,7 +228,7 @@
             else if (arr_len === 1 && params === 1) {
                 return fn.apply(this, val[0]);
             }
-            // More elements
+            // More than one element
             else if ((arr_len >= params && params >= 2) || (arr_len === 1 && params === 2)) {
                 var inst = [], j;
 
@@ -287,9 +260,9 @@
                 fn = matching[1];
             
             // Numbers, strings, booleans and OBJECTS!
-            if (val === pattern || pattern === $pm._ || pattern === $pm.$) {
-                return (fn.length === 1 && pattern === $pm.$) ?
-                        fn.call(null, $pm.$(val).name)        : // Parameter
+            if (val === pattern || pattern === $p._ || pattern === $p.$) {
+                return (fn.length === 1 && pattern === $p.$) ?
+                        fn.call(null, $p.$(val).name)        : // Parameter
                         fn.call(null);
             }
         }
@@ -308,21 +281,55 @@
                 pattern = matching[0],
                 fn = matching[1];
             
-            if (pattern === $pm._ || pattern.cons_name === val.cons_name || pattern.value === $pm.$) {
-                return (fn.length === 1 && pattern.value === $pm.$) ?
-                        fn.call(null, $pm.$(val).name)              : // Parameter
+            if (pattern === $p._ || pattern.cons_name === val.cons_name || pattern.value === $p.$) {
+                return (fn.length === 1 && pattern.value === $p.$) ?
+                        fn.call(null, $p.$(val).name)              : // Parameter
                         fn.call(null);
             }
         }
     };
     
-    // 1. Implement exhaustiveness check
-    // 2. Implement guards
-    $pm.function = function () {
-        // prevents optimizations in JavaScript engines (V8)
+    //
+    // Public API
+    //
+    
+    $p.data = function (name, obj) {
+        if (!is_obj(obj)) return PatternMatchingException('Expected object as input');
+        
+        $p[name] = {
+            'name': name,
+            'cons': {}
+        };
+        
+        for (k in obj) {
+            $p[k] = create_cons_fun(obj, k, name);
+            $p[k].type = name;
+            
+            if (obj[k] !== undefined) {
+                $p[k].of = obj[k].name;
+                $p[k].offun = obj[k];
+            }
+        }
+        
+        $p[name].cons = obj; // Set constructors
+    };
+    
+    $p.remove_type = function (name) {
+        // Delete all constructors
+        var tobj = $p[name],
+            cons = tobj.cons;
+        
+        for (k in cons)
+            delete $p[k];
+        
+        delete $p[name];
+    };
+    
+    $p.function = function () {
+        // Prevents optimizations in JavaScript engines (V8)
         var args = Array.prototype.slice.call(arguments);
         
-        // Infer type and check for redundancies and exhaustiveness
+        // Infer type, check for redundancies and exhaustiveness
         var type = infer_type(args);
         if (!redundancy_check(args, type)) throw new PatternMatchingException('Redundant pattern matching');
         if (!exhaustiveness_check(args, type)) throw new PatternMatchingException('Pattern matching not exhaustive');
@@ -350,13 +357,13 @@
     };
     
     // Wild card (throw result)
-    $pm._ = (function () {
+    $p._ = (function () {
         function Wildcard() {}
         return new Wildcard();
     })();
     
     // Parameter
-    $pm.$ = function (name) {
+    $p.$ = function (name) {
         function Parameter(n) { 
             this.name = n;
         }
@@ -366,8 +373,8 @@
     // AMD registration
     if (typeof define === "function" && define.amd) {
         define("pm", [], function() {
-            return $pm;
+            return $p;
         });
     }
-    else return $pm;
+    else return $p;
 }.call(this));
