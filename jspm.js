@@ -31,7 +31,7 @@
     };
     
     var assertDefType = function (obj, type, of) {
-        return (of ? obj.of : obj.type) === type.name;
+        return (of ? obj.of : obj.type) === type;
     };
     
     var is_obj = function (obj) {
@@ -63,19 +63,6 @@
     
     var is_cons = function (val) {
         return val.type !== undefined;
-    };
-    
-    var check_consistency = function (args) {
-        var len = args.length, track_type, i;
-        
-        for (i = 0; i < len; i++) {
-            var pattern = args[i],
-                current_type;
-            
-            if (pattern !== $pm._ && pattern !== $pm.$) {
-                
-            }
-        }
     };
     
     var infer_type = function (args) {
@@ -306,7 +293,7 @@
         }
     };
     
-    // 1. Check type of value
+    // 1. Implement exhaustiveness check
     // 2. Implement guards
     $pm.function = function () {
         // prevents optimizations in JavaScript engines (V8)
@@ -319,11 +306,12 @@
         
         return function (val, obj) {
             if (val.type !== undefined) {
-                
+                if (!assertDefType(val, type, false)) throw new PatternMatchingException('Expected input of type ' + type);
             }
-            else {
-                if (!assertType(val, type)) throw new PatternMatchingException('');
+            else if (type === 'Function') {
+                if (!assertType(val, 'Array')) throw new PatternMatchingException('Expected input of type Array');
             }
+            else if (!assertType(val, type)) throw new PatternMatchingException('Expected input of type ' + type);
             
             // Pattern matching on list (array)
             if (is_array(val))
