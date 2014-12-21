@@ -98,9 +98,9 @@
     };
     
     var redundancy_check = function (arr, type) {
-        var i, len = arr.length, track = [], type_name = type.name;
+        var i, len = arr.length, track = [];
         
-        if (type_name === 'Array') {
+        if (type === 'Array') {
             /*arr = arr.map(function (fn) {
                 return fn === $pm._ ? -1 : fn.length; // Also parameter!!!
             });*/
@@ -110,7 +110,7 @@
                 track.push(arr[i]);
             }
         }
-        else if (type === 'Number' || type_name === 'String' || type_name === 'Boolean') {
+        else if (type === 'Number' || type === 'String' || type === 'Boolean') {
             arr = get_patterns(arr);
             
             for (i = 0; i < len; i++) {
@@ -328,6 +328,7 @@
         if (!exhaustiveness_check(args, type)) throw new PatternMatchingException('Pattern matching not exhaustive');
         
         return function (val, obj) {
+            // Check input consistency
             if (val.type !== undefined) {
                 if (!assertDefType(val, type, false)) throw new PatternMatchingException('Expected input of type ' + type);
             }
