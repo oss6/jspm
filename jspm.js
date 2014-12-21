@@ -27,7 +27,7 @@
     }
     
     var assertType = function (obj, type) {
-        return obj.constructor.name === type.name;
+        return  obj.constructor.name === type;
     };
     
     var assertDefType = function (obj, type, of) {
@@ -52,9 +52,9 @@
     };
     
     var is_atom = function (val) {
-        return ((typeof value !== 'object' || value === null) &&
-                typeof value !== 'function') || 
-                is_boolean(value) || is_number(value) || type.is_string(value);  
+        return ((typeof val !== 'object' || val === null) &&
+                typeof val !== 'function') || 
+                is_boolean(val) || is_number(val) || is_string(val);  
     };
     
     var is_array = function (obj) {
@@ -65,27 +65,34 @@
         return val.type !== undefined;
     };
     
+    var check_consistency = function (args) {
+        var len = args.length, track_type, i;
+        
+        for (i = 0; i < len; i++) {
+            var pattern = args[i],
+                current_type;
+            
+            if (pattern !== $pm._ && pattern !== $pm.$) {
+                
+            }
+        }
+    };
+    
     var infer_type = function (args) {
-        var i = 0,
-            len = args.length;
-        
-        // Check consistency
-        
-        
-        var atom_m = [], track_type;
+        var len = args.length,
+            atom_m = [],
+            track_type,
+            i;
         
         // Check for atom matching
-        for (; i < len; i++) {
+        for (i = 0; i < len; i++) {
             var pattern = args[i];
             if (is_array(pattern))
                 atom_m.push(pattern);
         }
         
-        if (atom_m.length >= len) {
-            args = args.map(function (p) {
-                return p[0]; 
-            });
-        }
+        if (atom_m.length >= len)
+            args = get_patterns(args);
         
         for (i = 0; i < len; i++) {
             var pattern = args[i],
@@ -93,6 +100,7 @@
             
             if (pattern !== $pm._ && pattern !== $pm.$) {
                 current_type = (pattern.type === undefined ? pattern.constructor.name : pattern.type);
+                if (i === 0) track_type = current_type;
                 
                 if (current_type !== track_type) throw new PatternMatchingException('Not the same type'); // Fix
                 track_type = current_type;
@@ -116,6 +124,7 @@
             }
         }
         else if (type === 'Number' || type_name === 'String' || type_name === 'Boolean') {
+            arr = get_patterns(arr);
             
             for (i = 0; i < len; i++) {
                 if (track.indexOf(arr[i]) !== -1) return false;
@@ -160,7 +169,26 @@
         });
     };
     
-    $pm.type = function (name, obj) {
+    var create_cons_fun = function (obj, key, type) {
+        return function () {
+            var arg_len = arguments.length;
+            
+            // Type checking
+            if (
+                (arg_len !== 0 && obj[key] === undefined)   ||
+                (!(arg_len === 0 && obj[key] === undefined) &&
+                !(assertType(arguments[0], obj[key].name)))
+            ) throw new PatternMatchingException('Expected and actual types do not match');
+
+            return {
+                'value': arguments[0],
+                'type': type,
+                'cons_name': key
+            };
+        };
+    };
+    
+    $pm.data = function (name, obj) {
         if (!is_obj(obj)) return PatternMatchingException('Expected object as input');
         
         $pm[name] = {
@@ -169,19 +197,9 @@
         };
         
         for (k in obj) {
-            $pm[k] = function () {
-                var arg_len = arguments.length;
-
-                if (!(arg_len === 0 && obj[k] === undefined) || !(assertDefType(arguments[0], obj[k], false)))
-                    throw new
-                    PatternMatchingException('This expression has type string but an' +
-                                             ' expression was expected of type int');
-
-                if (arg_len === 1) this.value = arguments[0];
-            };
-
+            $pm[k] = create_cons_fun(obj, k, name);
             $pm[k].type = name;
-
+            
             if (obj[k] !== undefined) {
                 $pm[k].of = obj[k].name;
                 $pm[k].offun = obj[k];
@@ -261,28 +279,52 @@
             // Numbers, strings, booleans and OBJECTS!
             if (val === pattern || pattern === $pm._ || pattern === $pm.$) {
                 return (fn.length === 1 && pattern === $pm.$) ?
-                        fn.call(null, $pm.$(val).name) : // Parameter
+                        fn.call(null, $pm.$(val).name)        : // Parameter
                         fn.call(null);
             }
         }
     };
     
     var match_deft = function (args, val, bindings) {
+        var len = args.length, i;
         
+        // Binding
+        args = args.map(function (pattern) {
+            return [pattern[0], pattern[1].bind(bindings)]; 
+        });
+        
+        for (i = 0; i < len; i++) {
+            var matching = args[i],
+                pattern = matching[0],
+                fn = matching[1];
+            
+            if (pattern === $pm._ || pattern.cons_name === val.cons_name || pattern.value === $pm.$) {
+                return (fn.length === 1 && pattern.value === $pm.$) ?
+                        fn.call(null, $pm.$(val).name)              : // Parameter
+                        fn.call(null);
+            }
+        }
     };
     
-    // Implement guards
+    // 1. Check type of value
+    // 2. Implement guards
     $pm.function = function () {
         // prevents optimizations in JavaScript engines (V8)
         var args = Array.prototype.slice.call(arguments);
         
         // Infer type and check for redundancies and exhaustiveness
         var type = infer_type(args);
-        
         if (!redundancy_check(args, type)) throw new PatternMatchingException('Redundant pattern matching');
         if (!exhaustiveness_check(args, type)) throw PatternMatchingException('Pattern matching not exhaustive');
         
         return function (val, obj) {
+            if (val.type !== undefined) {
+                
+            }
+            else {
+                if (!assertType(val, type)) throw new PatternMatchingException('');
+            }
+            
             // Pattern matching on list (array)
             if (is_array(val))
                 return match_array(args, val, obj);
