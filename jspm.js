@@ -101,12 +101,12 @@
         var i, len = arr.length, track = [], type_name = type.name;
         
         if (type_name === 'Array') {
-            arr = arr.map(function (fn) {
+            /*arr = arr.map(function (fn) {
                 return fn === $pm._ ? -1 : fn.length; // Also parameter!!!
-            });
+            });*/
             
             for (i = 0; i < len; i++) {
-                if (track.indexOf(arr[i])) return false;
+                if (track.indexOf(arr[i]) !== -1) return false;
                 track.push(arr[i]);
             }
         }
@@ -119,35 +119,58 @@
             }
         }
         else {
-               
+            arr = arr.map(function (p) {
+                return p[0].cons_name; 
+            });
+            
+            for (i = 0; i < len; i++) {
+                if (track.indexOf(arr[i]) !== -1) return false;
+                track.push(arr[i]);
+            }
         }
         
         return true;
-    }
+    };
+    
+    var count_keys = function (obj) {
+        var count = 0;
+        
+        for (var k in obj)
+            if (obj.hasOwnProperty(k))
+                count++;
+        
+        return count;
+    };
     
     var exhaustiveness_check = function (arr, type) {
         // Assumes that all patterns have the same type and there are no redundancies
         var i, len = arr.length;
         
-        /*if (type === 'Array') {
+        if (type === 'Array') {
             
         }
         else if (type === 'Number' || type === 'String' || type === 'Boolean') {
-        
+            arr = get_patterns(arr);
+            
+            for (i = 0; i < len; i++)
+                if (arr[i] === $pm._ || arr[i] === $pm.$)
+                    return true;
         }
         else {
-               
-        }*/
-        
-        /*for (i = 0; i < len; i++) {
-            if (arr[i] === $pm._) // Also parameter
-                return true;
+            var cons = $pm[type].cons,
+                checked = [];
+            
+            for (i = 0; i < len; i++) {
+                if (arr[i] === $pm._)
+                    return true;
+                
+                checked.push(arr[i]);
+            }
+            
+            return count_keys(cons) === checked.length;
         }
         
-        
-        return false;*/
-        
-        return true;
+        return false;
     };
     
     var get_patterns = function (args) {
@@ -302,7 +325,7 @@
         // Infer type and check for redundancies and exhaustiveness
         var type = infer_type(args);
         if (!redundancy_check(args, type)) throw new PatternMatchingException('Redundant pattern matching');
-        if (!exhaustiveness_check(args, type)) throw PatternMatchingException('Pattern matching not exhaustive');
+        if (!exhaustiveness_check(args, type)) throw new PatternMatchingException('Pattern matching not exhaustive');
         
         return function (val, obj) {
             if (val.type !== undefined) {
