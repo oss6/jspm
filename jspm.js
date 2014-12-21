@@ -4,9 +4,11 @@
 // Version: 0.1.1
 
 ;(function () {
+    // Global variable reference
     var root = this;
     var prev = root.$p;
     
+    // Create module obj
     var $p = function(obj) {
         if (obj instanceof $p) return obj;
         if (!(this instanceof $p)) return new $p(obj);
@@ -23,6 +25,7 @@
         root.$p = $p;
     }
     
+    // Current jspm version
     $p.VERSION = '0.1.1';
     
     // Exceptions
@@ -94,7 +97,8 @@
                 current_type = (pattern.type === undefined ? pattern.constructor.name : pattern.type);
                 if (i === 0) track_type = current_type;
                 
-                if (current_type !== track_type) throw new PatternMatchingException('Not the same type'); // Fix
+                if (current_type !== track_type)
+                    throw new PatternMatchingException('Patterns are not consistent (not the same type');
                 track_type = current_type;
             }
         }
@@ -289,9 +293,9 @@
         }
     };
     
-    //
-    // Public API
-    //
+    // ****************
+    // *  Public API  *
+    // ****************
     
     $p.data = function (name, obj) {
         if (!is_obj(obj)) return PatternMatchingException('Expected object as input');
@@ -334,6 +338,8 @@
         if (!redundancy_check(args, type)) throw new PatternMatchingException('Redundant pattern matching');
         if (!exhaustiveness_check(args, type)) throw new PatternMatchingException('Pattern matching not exhaustive');
         
+        // val --> value to pattern match on
+        // obj --> additional values to bind in function
         return function (val, obj) {
             // Check input consistency
             if (val.type !== undefined) {
