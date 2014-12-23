@@ -164,7 +164,7 @@
         var i, len = arr.length;
         
         if (type === 'Array') {
-            
+            return true;
         }
         else if (type === 'Number' || type === 'String' || type === 'Boolean') {
             arr = get_patterns(arr);
@@ -375,6 +375,7 @@
         
         // Infer type, check for redundancies and exhaustiveness
         var type = infer_type(args);
+        type = (type === 'Function' ? 'Array' : type);
         if (!redundancy_check(args, type)) throw new PatternMatchingException('Redundant pattern matching');
         if (!exhaustiveness_check(args, type)) throw new PatternMatchingException('Pattern matching not exhaustive');
         
@@ -384,9 +385,6 @@
             // Check input consistency
             if (val.type !== undefined) {
                 if (!assertDefType(val, type, false)) throw new PatternMatchingException('Expected input of type ' + type);
-            }
-            else if (type === 'Function') {
-                if (!assertType(val, 'Array')) throw new PatternMatchingException('Expected input of type Array');
             }
             else if (!assertType(val, type)) throw new PatternMatchingException('Expected input of type ' + type);
             
