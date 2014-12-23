@@ -15,6 +15,13 @@ Features of jspm
 
 Pattern match on atoms
 ----------------------
+**Examples**
+``` javascript
+var fact = $p.function(
+    [0, function () { return 1 }],
+    [$p.$, function (n) { return n * (n - 1) }]
+);
+```
 
 Pattern match on arrays
 -----------------------

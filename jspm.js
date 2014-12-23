@@ -346,11 +346,12 @@
         for (k in cons)
             delete $p[k];
         
+        // Delete type
         delete $p[name];
     };
     
     /**
-     * Returns the defined types
+     * Returns all defined types
      * @returns The defined types in the current module
      * @memberof $p
      */
