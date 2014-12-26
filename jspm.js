@@ -43,7 +43,7 @@
     }
     
     var assertType = function (obj, type) {
-        return  obj.constructor.name === type;
+        return obj === null && type === null || obj.constructor.name === type || obj === $p.$;
     };
     
     var assertDefType = function (obj, type, of) {
@@ -83,7 +83,7 @@
     
     var infer_type = function (args) {
         var len = args.length,
-            atom_m = [],
+            patt = [],
             track_type,
             i;
         
@@ -91,18 +91,20 @@
         for (i = 0; i < len; i++) {
             var pattern = args[i];
             if (is_array(pattern))
-                atom_m.push(pattern);
+                patt.push(pattern);
         }
         
-        if (atom_m.length >= len)
+        if (patt.length >= len)
             args = get_patterns(args);
+        
+        console.log(args);
         
         for (i = 0; i < len; i++) {
             var pattern = args[i],
                 current_type;
             
             if (pattern !== $p._ && pattern !== $p.$) {
-                current_type = (pattern.type === undefined ? pattern.constructor.name : pattern.type);
+                current_type = (pattern.type !== undefined ? pattern.type : pattern.constructor.name);
                 if (i === 0) track_type = current_type;
                 
                 if (current_type !== track_type)
@@ -127,18 +129,16 @@
                 track.push(arr[i]);
             }
         }
-        else if (type === 'Number' || type === 'String' || type === 'Boolean') {
+        /*else if (type === 'Number' || type === 'String' || type === 'Boolean') {
             arr = get_patterns(arr);
             
             for (i = 0; i < len; i++) {
                 if (track.indexOf(arr[i]) !== -1) return false;
                 track.push(arr[i]);
             }
-        }
+        }*/
         else {
-            arr = arr.map(function (p) {
-                return p[0].cons_name; 
-            });
+            arr = get_patterns(arr, 'cons_name');
             
             for (i = 0; i < len; i++) {
                 if (track.indexOf(arr[i]) !== -1) return false;
@@ -159,9 +159,24 @@
         return count;
     };
     
+    var equal_arr = function (arr1, arr2) {
+        var l1 = arr1.length,
+            l2 = arr2.length;
+        
+        if (l1 !== l2) return false;
+        
+        for (var i = 0; i < l1; i++)
+            if (arr1[i] !== arr2[i])
+                return false;
+        
+        return true;
+    };
+            
     var exhaustiveness_check = function (arr, type) {
         // Assumes that all patterns have the same type and there are no redundancies
         var i, len = arr.length;
+        
+        if (len === 0) return false;
         
         if (type === 'Array') {
             return true;
@@ -174,9 +189,10 @@
                     return true;
         }
         else {
-            var cons = $p[type].cons,
-                checked = [];
-            
+            arr = get_patterns(arr, 'cons_name');
+            var checked = [],
+                pivot = arr[0];
+                
             for (i = 0; i < len; i++) {
                 if (arr[i] === $p._)
                     return true;
@@ -184,35 +200,16 @@
                 checked.push(arr[i]);
             }
             
-            return count_keys(cons) === checked.length;
+            return equal_arr(checked.sort(), Object.keys(type).sort());
         }
         
         return false;
     };
     
-    var get_patterns = function (args) {
+    var get_patterns = function (args, prop) {
         return args.map(function (e) {
-            return e[0];
+            return prop !== undefined ? e[0][prop] : e[0];
         });
-    };
-    
-    var create_cons_fun = function (obj, key, type) {
-        return function () {
-            var arg_len = arguments.length;
-            
-            // Type checking
-            if (
-                (arg_len !== 0 && obj[key] === undefined)   ||
-                (!(arg_len === 0 && obj[key] === undefined) &&
-                !(assertType(arguments[0], obj[key].name)))
-            ) throw new PatternMatchingException('Expected and actual types do not match');
-
-            return {
-                'value': arguments[0],
-                'type': type,
-                'cons_name': key
-            };
-        };
     };
     
     var match_array = function (args, val, bindings) {
@@ -301,6 +298,12 @@
         }
     };
     
+    var create_cons_fun = function (obj, cons) {
+        return function () {
+            var of = obj[cons];
+        };
+    };
+    
     // ****************
     // *  Public API  *
     // ****************
@@ -315,55 +318,40 @@
     $p.data = function (name, obj) {
         if (!is_obj(obj)) return PatternMatchingException('Expected object as input');
         
-        $p[name] = {
-            'name': name,
-            'cons': {}
+        // Create function for each constructor with these values: value, 
+        var type = window[name] = function (o, cons) {
+            
         };
         
-        for (k in obj) {
-            $p[k] = create_cons_fun(obj, k, name);
-            $p[k].type = name;
-            
-            if (obj[k] !== undefined) {
-                $p[k].of = obj[k].name;
-                $p[k].offun = obj[k];
-            }
+        for (var cons in obj) {
+            window[cons] = create_cons_fun(obj, cons);
         }
-        
-        $p[name].cons = obj; // Set constructors
     };
     
-    /**
-     * Removes a previously created type given its name
-     * @param {String} name The name of the type
-     * @memberof $p
-     */
-    $p.remove_type = function (name) {
-        // Delete all constructors
-        var tobj = $p[name],
-            cons = tobj.cons;
+    /*
+        var BinaryTree = Data(function(binarytree) ({
+            Void : {},
+            Bt: {
+                v: Number, L: binarytree, R: binarytree
+            }
+        }));
         
-        for (k in cons)
-            delete $p[k];
+        var btree = $p.data({
+            'Void': {},
+            'Bt': {
+                v: Number, L: btree, R: btree
+            }
+        });
         
-        // Delete type
-        delete $p[name];
-    };
-    
-    /**
-     * Returns all defined types
-     * @returns The defined types in the current module
-     * @memberof $p
-     */
-    $p.defined_types = function () {
-        var def_types = [];
+        var a = nat.Succ(10); // like new nat.Succ
+        a instanceof nat === true
         
-        for (var k in $p)
-            if ($p.hasOwnProperty(k) && is_obj($p[k]) && $p[k].cons !== undefined)
-                def_types.push($p[k]);
         
-        return def_types;
-    };
+        var patt = $p.function(
+            [nat.Zero, function () { return 0 }],
+            [nat.Succ(10), function () { return 10 }],
+        );
+    */
     
     /**
      * Implements the pattern matching for arrays, atom types and defined types
@@ -377,17 +365,18 @@
         // Infer type, check for redundancies and exhaustiveness
         var type = infer_type(args);
         type = (type === 'Function' ? 'Array' : type);
+        
         if (!redundancy_check(args, type)) throw new PatternMatchingException('Redundant pattern matching');
         if (!exhaustiveness_check(args, type)) throw new PatternMatchingException('Pattern matching not exhaustive');
         
         // val --> value to pattern match on
         // obj --> additional values to bind in function
         return function (val, obj) {
+            console.log(type);
+            
             // Check input consistency
-            if (val.type !== undefined) {
-                if (!assertDefType(val, type, false)) throw new PatternMatchingException('Expected input of type ' + type);
-            }
-            else if (!assertType(val, type)) throw new PatternMatchingException('Expected input of type ' + type);
+            if (val.type !== undefined && val.type !== type) throw new PatternMatchingException('Expected input of type ' + type);
+            if (!assertType(val, type)) throw new PatternMatchingException('Expected input of type ' + type);
             
             // Pattern matching on list (array)
             if (is_array(val))

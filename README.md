@@ -8,7 +8,7 @@ need just plain Javascript; no macros or other syntactic sugar constructs.
 
 Introduction
 ------------
-Pattern matching is
+Pattern matching is used to recognize the form of a given value and let the computation be guided accordingly, associating with each pattern an expression to compute.
 
 Features of jspm
 ----------------
