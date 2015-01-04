@@ -46,10 +46,6 @@
         return obj === null && type === null || obj.constructor.name === type || obj === $p.$;
     };
     
-    var assertDefType = function (obj, type, of) {
-        return (of ? obj.of : obj.type) === type;
-    };
-    
     var is_obj = function (obj) {
         return Object.prototype.toString.call(obj) === '[object Object]';   
     };
@@ -77,10 +73,6 @@
         return Object.prototype.toString.call(obj) === '[object Array]'; 
     };
     
-    var is_cons = function (val) {
-        return val.type !== undefined;
-    };
-    
     var infer_type = function (args) {
         var len = args.length,
             patt = [],
@@ -104,7 +96,7 @@
                 current_type;
             
             if (pattern !== $p._ && pattern !== $p.$) {
-                current_type = (pattern.type !== undefined ? pattern.type : pattern.constructor.name);
+                current_type = pattern.constructor.name;
                 if (i === 0) track_type = current_type;
                 
                 if (current_type !== track_type)
@@ -129,16 +121,8 @@
                 track.push(arr[i]);
             }
         }
-        /*else if (type === 'Number' || type === 'String' || type === 'Boolean') {
+        else if (type === 'Number' || type === 'String' || type === 'Boolean') {
             arr = get_patterns(arr);
-            
-            for (i = 0; i < len; i++) {
-                if (track.indexOf(arr[i]) !== -1) return false;
-                track.push(arr[i]);
-            }
-        }*/
-        else {
-            arr = get_patterns(arr, 'cons_name');
             
             for (i = 0; i < len; i++) {
                 if (track.indexOf(arr[i]) !== -1) return false;
@@ -187,20 +171,6 @@
             for (i = 0; i < len; i++)
                 if (arr[i] === $p._ || arr[i] === $p.$)
                     return true;
-        }
-        else {
-            arr = get_patterns(arr, 'cons_name');
-            var checked = [],
-                pivot = arr[0];
-                
-            for (i = 0; i < len; i++) {
-                if (arr[i] === $p._)
-                    return true;
-                
-                checked.push(arr[i]);
-            }
-            
-            return equal_arr(checked.sort(), Object.keys(type).sort());
         }
         
         return false;
@@ -277,81 +247,9 @@
         }
     };
     
-    var match_deft = function (args, val, bindings) {
-        var len = args.length, i;
-        
-        // Binding
-        args = args.map(function (pattern) {
-            return [pattern[0], pattern[1].bind(bindings)]; 
-        });
-        
-        for (i = 0; i < len; i++) {
-            var matching = args[i],
-                pattern = matching[0],
-                fn = matching[1];
-            
-            if (pattern === $p._ || pattern.cons_name === val.cons_name || pattern.value === $p.$) {
-                return (fn.length === 1 && pattern.value === $p.$) ?
-                        fn.call(null, $p.$(val).name)              : // Parameter
-                        fn.call(null);
-            }
-        }
-    };
-    
-    var create_cons_fun = function (obj, cons) {
-        return function () {
-            var of = obj[cons];
-        };
-    };
-    
     // ****************
     // *  Public API  *
     // ****************
-    
-    /**
-     * Defines a new type called 'name' with the constructors
-     * provided in the object 'obj'.
-     * @param {String} name The name of the new type
-     * @param {Object} obj A hash containing the constructors
-     * @memberof $p
-     */
-    $p.data = function (name, obj) {
-        if (!is_obj(obj)) return PatternMatchingException('Expected object as input');
-        
-        // Create function for each constructor with these values: value, 
-        var type = window[name] = function (o, cons) {
-            
-        };
-        
-        for (var cons in obj) {
-            window[cons] = create_cons_fun(obj, cons);
-        }
-    };
-    
-    /*
-        var BinaryTree = Data(function(binarytree) ({
-            Void : {},
-            Bt: {
-                v: Number, L: binarytree, R: binarytree
-            }
-        }));
-        
-        var btree = $p.data({
-            'Void': {},
-            'Bt': {
-                v: Number, L: btree, R: btree
-            }
-        });
-        
-        var a = nat.Succ(10); // like new nat.Succ
-        a instanceof nat === true
-        
-        
-        var patt = $p.function(
-            [nat.Zero, function () { return 0 }],
-            [nat.Succ(10), function () { return 10 }],
-        );
-    */
     
     /**
      * Implements the pattern matching for arrays, atom types and defined types
@@ -384,9 +282,6 @@
             // Pattern matching on numbers, strings, booleans and (objects)
             else if (is_atom(val))
                 return match_atom(args, val, obj);
-            // Pattern matching on defined types
-            else if (is_cons(val))
-                return match_deft(args, val, obj);
         };
     };
     
