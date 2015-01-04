@@ -13,9 +13,7 @@ Features of jspm
 ----------------
 - Pattern matching on **atoms** (object literals, numbers, strings, null, undefined)
 - Pattern matching on **arrays** (like lists)
-- Pattern matching on **algebraic data structures** (ADT)
 - **Exhaustiveness** and **redundancy** checking
-- Defining **new types** (ADT)
 - Usage of **bindings**
 
 Pattern match on atoms
@@ -115,14 +113,6 @@ var fact = $p.function(
 
 << PatternMatchingException: 'Redundant pattern'
 ```
-
-Defined types
--------------
-In development phase...
-
-Pattern match on defined types
-------------------------------
-In development phase...
 
 Next release
 ------------
