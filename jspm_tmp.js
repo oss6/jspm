@@ -116,10 +116,68 @@ var $p = (function () {
         return obj === null && type === null || obj.constructor.name === type;
     };
 
-    $.inferType = function (ks) {
-        ks.forEach(function (v) {
-            
+    $.isZero = function (v) {
+        return v === 0;
+    };
+
+    $.all = function (p, arr) {
+        arr.forEach(function (v) {
+            if (!p(v)) return false;
         });
+
+        return true;
+    };
+
+    $.isNum = function (str) {
+        return !isNaN(str);
+    };
+
+    $.inferType = function (ks) {
+        var tps   = [],
+            boolc = 0,
+            numc  = 0,
+            wcc   = 0,
+            fvc   = 0,
+            arrc  = 0,
+            strc  = 0;
+
+        ks.forEach(function (v) {
+            if (v.constructor.name === 'Boolean') {
+                tps.push('Boolean');
+                boolc++;
+            }
+            else if (isNum(v)) {
+                tps.push('Number');
+                numc++;
+            }
+            else if (v === '_') {
+                tps.push('WC');
+                wcc++;
+            }
+            else if (v === null || v === undefined || v === NaN) {
+                tps.push('FV');
+                fvc++;
+            }
+            else if (/^\w+::\w+$/g.test(v) || /^\[.*\]$/g.test(v)) {
+                tps.push('Array');
+                arrc++;
+            }
+            else {
+                tps.push('String');
+                strc++;
+            }
+        });
+
+        if (wc > 1) throw new PatternMatchingException('Patterns are not consistent (not the same type)')
+
+        if (((boolc === 2) || (boolc === 1 && wcc === 1) || (boolc === 1 && strc === 1)) && $.all($.isZero, [arrc, numc]))
+            return 'Boolean';
+        else if (((numc > 0 && wcc === 1) || (numc > 0 && strc === 1)) && $.all($.isZero, [boolc, arrc]))
+            return 'Number';
+        else if (((arrc > 0 && strc === 1) || (arrc > 0)) && $.all($.isZero, [boolc, numc]))
+            return 'Array';
+        else
+            return 'String';
     };
 
     $.exhaustive = function (ks) {
@@ -132,6 +190,21 @@ var $p = (function () {
 
     $.match = function (o, val, bindings) {
 
+        // Apply bindings
+        if (bindings) {
+            var oTmp = {}; // Temporary object
+
+            Object.keys(o).forEach(function (v) {
+                oTmp[v] = o[v].bind(bindings);
+            });
+
+            o = oTmp;
+        }
+
+        // Pattern matching --> SORT KEYS (WC AT THE END!!)
+        Object.keys(o).forEach(function (v) {
+
+        });
     };
 
     /**
