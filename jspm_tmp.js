@@ -132,6 +132,14 @@ var $p = (function () {
         return !isNaN(str);
     };
 
+    /**
+        Boolean
+        Number
+        Array
+        String
+        WC -> Wildcard
+        FV -> falsy value
+    */
     $.inferType = function (ks) {
         var tps   = [],
             boolc = 0,
@@ -142,30 +150,18 @@ var $p = (function () {
             strc  = 0;
 
         ks.forEach(function (v) {
-            if (v.constructor.name === 'Boolean') {
-                tps.push('Boolean');
+            if (v.constructor.name === 'Boolean')                     // Boolean
                 boolc++;
-            }
-            else if (isNum(v)) {
-                tps.push('Number');
+            else if (isNum(v))                                        // Number
                 numc++;
-            }
-            else if (v === '_') {
-                tps.push('WC');
+            else if (v === '_')                                       // Wildcard
                 wcc++;
-            }
-            else if (v === null || v === undefined || v === NaN) {
-                tps.push('FV');
+            else if (v === null || v === undefined || v === NaN)      // Falsy values
                 fvc++;
-            }
-            else if (/^\w+::\w+$/g.test(v) || /^\[.*\]$/g.test(v)) {
-                tps.push('Array');
+            else if (/^\w+::\w+$/g.test(v) || /^\[.*\]$/g.test(v))    // Array
                 arrc++;
-            }
-            else {
-                tps.push('String');
+            else                                                      // Strings
                 strc++;
-            }
         });
 
         if (wc > 1) throw new PatternMatchingException('Patterns are not consistent (not the same type)')
@@ -188,7 +184,7 @@ var $p = (function () {
 
     };
 
-    $.match = function (o, val, bindings) {
+    $.match = function (o, val, bindings, type) {
 
         // Apply bindings
         if (bindings) {
@@ -201,10 +197,23 @@ var $p = (function () {
             o = oTmp;
         }
 
-        // Pattern matching --> SORT KEYS (WC AT THE END!!)
-        Object.keys(o).forEach(function (v) {
+        var keys = Object.keys(o); // SORT KEYS (WC AT THE END!!)
 
-        });
+        if (type === 'Number') {
+            var fn = o[val + ''];
+
+            if (fn !== undefined) return fn();
+            else {
+                fn = o[keys.length - 1] || o['_'];
+                return fn();
+            }
+        }
+        else if (type === 'Array') {
+            
+        }
+        else {
+
+        }
     };
 
     /**
@@ -229,7 +238,7 @@ var $p = (function () {
         return function (val, bindings) {
             // Check input consistency (e.g. expected input of type...)
             if (!assertType(val, t)) throw new PatternMatchingException('Expected input of type ' + t);
-            return $.match(o, val, bindings);
+            return $.match(o, val, bindings, t);
         };
     };
 
