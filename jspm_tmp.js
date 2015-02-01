@@ -167,7 +167,7 @@ var $p = (function () {
                 tmap.WC++;
             else if (v === null || v === undefined)      // Falsy values
                 tmap.FVC++;
-            else if (/^\w+::\w+$/g.test(v) || /^\[.*\]$/g.test(v))    // Array
+            else if (/^(\w+::\w+)+$/g.test(v) || /^\[.*\]$/g.test(v))    // Array
                 tmap.Array++;
             else                                                      // Strings
                 tmap.String++;
@@ -220,19 +220,58 @@ var $p = (function () {
             o = oTmp;
         }
 
+        // first particular and then general!
         var keys = Object.keys(o); // SORT KEYS (WC AT THE END!!)
 
-        if (type === 'Number') {
+        if (type === 'Number' || type === 'Boolean') {
             var fn = o[val + ''];
 
             if (fn !== undefined) return fn();
             else {
-                fn = o[keys[keys.length - 1]] || o['_'];
-                return fn();
+                if ((fn = o[keys[keys.length - 1]]) !== undefined) {
+                    return fn(val);
+                }
+                else {
+                    fn = o['_'];
+                    return fn();
+                }
             }
         }
         else if (type === 'Array') {
-            
+            var res;
+
+            keys.forEach(function (ptr) {
+                if ((res = ptr.match(/^\[.*\]$/g))) {
+                    // TODO
+                }
+                else if ((res = ptr.match(/^(\w+::\w+)+$/g))) {
+                    var parts = res[0].split('::'),
+                        hds = [],  // heads (individual elements)
+                        tail = []; // tail
+
+                    parts.forEach(function (v, i) {
+                        if (i !== parts.length - 1) {
+                            hds.push(val.slice(i, i + 1));
+                        }
+                        else {
+                            tail.push(val.slice(i));
+                        }
+                    });
+
+                    var fn = o[ptr];
+                    hds.push(tail);
+                    return fn.apply(null, hds);
+                }
+                else {
+                    if ((fn = o[keys[keys.length - 1]]) !== undefined) {
+                        return fn(val);
+                    }
+                    else {
+                        fn = o['_'];
+                        return fn();
+                    }
+                }
+            });
         }
         else {
 
