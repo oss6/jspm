@@ -3,7 +3,6 @@ var $p = (function () {
     var $ = {}, // Public namespace
         _ = {}; // Private namespace
 
-
     // Polyfills
     // From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys
     if (!Object.keys) {
@@ -132,6 +131,15 @@ var $p = (function () {
         return !isNaN(str);
     };
 
+    $.checkOtherZero = function (type, keys, obj) {
+        keys.forEach(function (t) {
+            if (t !== type && ((type !== 'String' && t === 'String' && obj[t] > 1) || (t !== 'WC' && obj[t] > 0)))
+                return false;
+        });
+
+        return true;
+    };
+
     /**
         Boolean
         Number
@@ -141,49 +149,64 @@ var $p = (function () {
         FV -> falsy value
     */
     $.inferType = function (ks) {
-        var tps   = [],
-            boolc = 0,
-            numc  = 0,
-            wcc   = 0,
-            fvc   = 0,
-            arrc  = 0,
-            strc  = 0;
+        var tmap = {
+            'Number': 0,
+            'Boolean': 0,
+            'String': 0,
+            'Array': 0,
+            'WC': 0,
+            'FVC': 0
+        };
 
         ks.forEach(function (v) {
             if (v.constructor.name === 'Boolean')                     // Boolean
-                boolc++;
-            else if (isNum(v))                                        // Number
-                numc++;
+                tmap.Boolean++;
+            else if ($.isNum(v))                                        // Number
+                tmap.Number++;
             else if (v === '_')                                       // Wildcard
-                wcc++;
-            else if (v === null || v === undefined || v === NaN)      // Falsy values
-                fvc++;
+                tmap.WC++;
+            else if (v === null || v === undefined)      // Falsy values
+                tmap.FVC++;
             else if (/^\w+::\w+$/g.test(v) || /^\[.*\]$/g.test(v))    // Array
-                arrc++;
+                tmap.Array++;
             else                                                      // Strings
-                strc++;
+                tmap.String++;
         });
 
-        if (wc > 1) throw new PatternMatchingException('Patterns are not consistent (not the same type)')
+        console.log(tmap);
 
-        if (((boolc === 2) || (boolc === 1 && wcc === 1) || (boolc === 1 && strc === 1)) && $.all($.isZero, [arrc, numc]))
-            return 'Boolean';
-        else if (((numc > 0 && wcc === 1) || (numc > 0 && strc === 1)) && $.all($.isZero, [boolc, arrc]))
-            return 'Number';
-        else if (((arrc > 0 && strc === 1) || (arrc > 0)) && $.all($.isZero, [boolc, numc]))
-            return 'Array';
-        else
-            return 'String';
+        // Get max of counts
+        // for all types except string:
+        //  if the number of values is bigger than 0 and wc or par is 1 then type is valid
+        // string:
+        //
+        var maxc = -1,
+            maxr = '',
+            tmKeys = Object.keys(tmap);
+
+        tmKeys.forEach(function (t) {
+            if (tmap[t] > maxc) {
+                maxr = t;
+                maxc = tmap[t];
+            }
+        });
+
+        if (!$.checkOtherZero(maxr, tmKeys, tmap))
+            throw new PatternMatchingException('Patterns are not consistent (not the same type)');
+
+        // Check for redundancies and exhaustiveness
+
+        return maxr;
     };
 
-    $.exhaustive = function (ks) {
-
-    };
-
-    $.redundant = function (ks) {
-
-    };
-
+    /**
+     *
+     * @param o Object map
+     * @param val Value to match against
+     * @param bindings Bindings to attach
+     * @param type Type of the patterns
+     * @returns {mixed}
+     */
     $.match = function (o, val, bindings, type) {
 
         // Apply bindings
@@ -204,7 +227,7 @@ var $p = (function () {
 
             if (fn !== undefined) return fn();
             else {
-                fn = o[keys.length - 1] || o['_'];
+                fn = o[keys[keys.length - 1]] || o['_'];
                 return fn();
             }
         }
@@ -227,20 +250,16 @@ var $p = (function () {
     _.fun = function (o) {
         // Get keys
         var ks = Object.keys(o);
-
-        // Infer and check type
+        // Infer type, redundancy and exhaustiveness check
         var t = $.inferType(ks);
-
-        // Exhaustiveness and redundancy check
-        if (!$.exhaustive(ks)) return null; // throw exception
-        if ($.redundant(ks)) return null; // throw exception
+        console.log(t);
 
         return function (val, bindings) {
             // Check input consistency (e.g. expected input of type...)
-            if (!assertType(val, t)) throw new PatternMatchingException('Expected input of type ' + t);
+            if (!$.assertType(val, t)) throw new PatternMatchingException('Expected input of type ' + t);
             return $.match(o, val, bindings, t);
         };
     };
 
-    return $;
+    return _;
 })();
