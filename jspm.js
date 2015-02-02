@@ -184,6 +184,7 @@ var $p = (function () {
         return !isNaN(str);
     };
 
+    // compare: x::xs and x1::x2::xs (latter to be checked first)
     $.compareArrayPtrFn = function (a, b) {
         if (a === '_' || a.match($.PAR_REGEX)) return 1;
         if ((a.match($.ARRAY_REGEX.CONS1) && b.match($.ARRAY_REGEX.CONS1)) ||
@@ -316,7 +317,7 @@ var $p = (function () {
 
             // Order keys
             keys.sort($.compareArrayPtrFn);
-
+            console.log(keys);
             // Loop through patterns
             for (var i = 0, len = keys.length; i < len; i++) {
                 var ptr = keys[i].replace(/\s+/g, '');
