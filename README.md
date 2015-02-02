@@ -77,7 +77,7 @@ Wildcards (_) are useful for grouping everything that is not being matched by th
 Usage example (not so useful example...):
 
 ``` javascript
-var hello = $p.function({
+var hello = $p.fun({
     '0': function () { return 'Ooopss..' },
     '_': function () { return 'Hello World!' }
 })

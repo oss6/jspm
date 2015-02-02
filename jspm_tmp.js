@@ -127,6 +127,42 @@ var $p = (function () {
         return true;
     };
 
+    $.map = function (arr, fn) {
+        var out = [];
+
+        arr.forEach(function (val) {
+            out.push(fn(val));
+        });
+
+        return out;
+    };
+
+    $.range = function (low, high) {
+        var arr = [];
+
+        for (var i = low; i < high; i++)
+            arr.push(i);
+
+        return arr;
+    };
+
+    $.cmp = function (a, b) {
+        return a - b;
+    };
+
+    $.equalArr = function (a1, a2, cmp) {
+        cmp = cmp || $.cmp;
+
+        if (a1.length !== a2.length) return false;
+
+        for (var i = 0, len = a1.length; i < len; i++) {
+            if (cmp(a1[i], a2[i]) !== 0)
+                return false;
+        }
+
+        return true;
+    };
+
     $.isNum = function (str) {
         return !isNaN(str);
     };
@@ -154,6 +190,7 @@ var $p = (function () {
             'Boolean': 0,
             'String': 0,
             'Array': 0,
+            // 'Function': 0,
             'WC': 0,
             'FVC': 0
         };
@@ -167,7 +204,11 @@ var $p = (function () {
                 tmap.WC++;
             else if (v === null || v === undefined)      // Falsy values
                 tmap.FVC++;
-            else if (/^(\w+::\w+)+$/g.test(v) || /^\[.*\]$/g.test(v))    // Array
+            else if (
+                /^(\w+::\w+)+$/g.test(v) ||
+                /^\[.*\]$/g.test(v)      ||
+                /^\w+..\w+$/g.test(v)
+            )    // Array
                 tmap.Array++;
             else                                                      // Strings
                 tmap.String++;
@@ -208,6 +249,7 @@ var $p = (function () {
      * @returns {Function}
      */
     $.match = function (o, val, bindings, type) {
+        var fn, parts;
 
         // Apply bindings
         if (bindings) {
@@ -224,7 +266,7 @@ var $p = (function () {
         var keys = Object.keys(o); // Sort fn
 
         if (type === 'Number' || type === 'Boolean') {
-            var fn = o[val + ''];
+            fn = o[val + ''];
 
             if (fn !== undefined) return fn();
             else {
@@ -238,12 +280,13 @@ var $p = (function () {
             }
         }
         else if (type === 'Array') {
-            var res, fn;
+            var res;
 
             // Loop through patterns
             for (var i = 0, len = keys.length; i < len; i++) {
                 var ptr = keys[i].replace(/\s+/g, '');
 
+                // CONS 1
                 if ((res = ptr.match(/^\[.*\]$/g))) {
                     var carr = ptr.slice(1, -1);
                     fn = o[ptr];
@@ -256,10 +299,11 @@ var $p = (function () {
                         // Check equality between arr and val
                     }
                 }
+                // CONS 2
                 else if ((res = ptr.match(/^(\w+::\w+)+$/g))) { // Check x::[] !!!
-                    var parts = res[0].split('::'),
-                        hds = [],  // heads (individual elements)
+                    var hds = [],  // heads (individual elements)
                         tail;      // tail
+                        parts = res[0].split('::');
 
                     parts.forEach(function (v, i) {
                         if (i !== parts.length - 1) {
@@ -274,6 +318,17 @@ var $p = (function () {
                     hds.push(tail);
                     return fn.apply(null, hds);
                 }
+                // CONS 3
+                else if ((res = ptr.match(/^\w+..\w+$/g))) {
+                    parts = res[0].split('..');
+                    var low   = parseFloat(parts[0]),
+                        high  = parseFloat(parts[1]),
+                        arr = $.range(low, high);
+
+                    if ($.equalArr(val, arr))
+                        return fn(val); // check this
+                }
+                // WILD CARD / PARAMETER
                 else {
                     if ((fn = o[keys[keys.length - 1]]) !== undefined) {
                         return fn(val);
@@ -295,7 +350,9 @@ var $p = (function () {
 
         var sum = $p.fun({
             '[]': function () { return 0 },
-            'x::xs': function (x, xs) { return x + sum(xs) }
+            'x::xs': function (x, xs) { return x + sum(xs) },
+            '2..10': fun,
+            '0..n': fun
         });
     */
     _.fun = function (o) {
