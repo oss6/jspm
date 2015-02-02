@@ -14,7 +14,7 @@ Features of jspm
 - Pattern matching on **atoms** (object literals, numbers, strings, null, undefined)
 - Pattern matching on **arrays** (like lists)
 - **Exhaustiveness** and **redundancy** checking
-- Usage of **bindings**
+- Usage of **bindings**, **parameters** and **wild cards**
 
 Pattern match on atoms
 ----------------------
@@ -22,10 +22,10 @@ Pattern match on atoms
 
 **Factorial definition**
 ``` javascript
-var fact = $p.function(
-    [0, function () { return 1 }],
-    [$p.$, function (n) { return n * fact(n - 1) }]
-);
+var fact = $p.fun({
+    '0': function ()  { return 1 },
+    'n': function (n) { return n * fact(n - 1) }
+});
 ```
 
 **Application**
@@ -36,15 +36,15 @@ fact(3);
 
 Pattern match on arrays
 -----------------------
-Pattern matching on arrays is simple: just pass to $p.function functions. These number of arguments of these functions
-determine the pattern. For example zero arguments matches the empty array []. x, xs matches an array with one or more
-elements: x is the head and xs is the tail (you can choose different names).
+Supported patterns:
+- Head, tail constructor: `x::xs` or `x1::x2::xs`
+- Array literal: `[]` or `[4, 3, 1, 7]`
 
 ``` javascript
-var sum = $p.function(
-    function () { return 0 },
-    function (x, xs) { return x + sum(xs) }
-);
+var sum = $p.fun({
+    '[]': function () { return 0 },
+    'x::xs': function () { return x + sum(xs) }
+});
 
 sum([1, 4, 3]);
 
@@ -56,12 +56,12 @@ Bindings
 Bindings are a useful way to pass more information to the function matching the pattern. Below usage example:
 
 ``` javascript
-var add = $p.function(
-    [0, function () { return this.val }],
-    [$p.$, function (n) { return n + this.val }]
-);
+var add = $p.fun({
+    '0': function () { return this.val },
+    'n': function (n) { return n + this.val }
+});
 
-add(4, { 'val': 3 });
+add(4, {'val': 3});
 
 << 7
 ```
@@ -73,14 +73,14 @@ Parameters allow to bind values to variable names in the matching function.
 Usage of parameters - $p.$ : see factorial example above
 
 ### Wildcard
-Wildcards ($p._) are useful for grouping everything that is not being matched by the other patterns.
+Wildcards (_) are useful for grouping everything that is not being matched by the other patterns.
 Usage example (not so useful example...):
 
 ``` javascript
-var hello = $p.function(
-    [0, function () { return 'Ooopss..' }],
-    [$p._, function () { return 'Hello World!' }]
-);
+var hello = $p.function({
+    '0': function () { return 'Ooopss..' },
+    '_': function () { return 'Hello World!' }
+})
 
 hello(0);
 << 'Ooopss...'
@@ -95,24 +95,8 @@ In pattern matching we must ensure exhaustiveness (all patterns are covered) and
 same patterns).
 
 ### Exhaustiveness
-``` javascript
-var fact = $p.function(
-    [0, function () { return 1 }],
-);
-
-<< PatternMatchingException: 'The pattern is not exhaustive'
-```
 
 ### Redundancy
-``` javascript
-var fact = $p.function(
-    [0, function () { return 1 }],
-    [0, function () { return 2 }],
-    [$p.$, function (n) { return n * fact(n - 1) }],
-);
-
-<< PatternMatchingException: 'Redundant pattern'
-```
 
 Next release
 ------------

@@ -205,7 +205,7 @@ var $p = (function () {
      * @param val Value to match against
      * @param bindings Bindings to attach
      * @param type Type of the patterns
-     * @returns {mixed}
+     * @returns {Function}
      */
     $.match = function (o, val, bindings, type) {
 
@@ -221,7 +221,7 @@ var $p = (function () {
         }
 
         // first particular and then general!
-        var keys = Object.keys(o); // SORT KEYS (WC AT THE END!!)
+        var keys = Object.keys(o); // Sort fn
 
         if (type === 'Number' || type === 'Boolean') {
             var fn = o[val + ''];
@@ -238,27 +238,39 @@ var $p = (function () {
             }
         }
         else if (type === 'Array') {
-            var res;
+            var res, fn;
 
-            keys.forEach(function (ptr) {
+            // Loop through patterns
+            for (var i = 0, len = keys.length; i < len; i++) {
+                var ptr = keys[i].replace(/\s+/g, '');
+
                 if ((res = ptr.match(/^\[.*\]$/g))) {
-                    // TODO
+                    var carr = ptr.slice(1, -1);
+                    fn = o[ptr];
+
+                    if (carr === '' && val.length === 0)
+                        return fn();
+                    else {
+                        var arr = carr.split(',');
+
+                        // Check equality between arr and val
+                    }
                 }
-                else if ((res = ptr.match(/^(\w+::\w+)+$/g))) {
+                else if ((res = ptr.match(/^(\w+::\w+)+$/g))) { // Check x::[] !!!
                     var parts = res[0].split('::'),
                         hds = [],  // heads (individual elements)
-                        tail = []; // tail
+                        tail;      // tail
 
                     parts.forEach(function (v, i) {
                         if (i !== parts.length - 1) {
-                            hds.push(val.slice(i, i + 1));
+                            hds.push(val[i]);
                         }
                         else {
-                            tail.push(val.slice(i));
+                            tail = val.slice(i);
                         }
                     });
 
-                    var fn = o[ptr];
+                    fn = o[ptr];
                     hds.push(tail);
                     return fn.apply(null, hds);
                 }
@@ -271,7 +283,7 @@ var $p = (function () {
                         return fn();
                     }
                 }
-            });
+            }
         }
         else {
 
