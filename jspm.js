@@ -124,6 +124,7 @@ var $p = (function () {
     };
 
     $.PAR_REGEX = /^__\w+__$/g;
+    $.ADT_REGEX = /^\w+\(.*\)$/g;
 
     $.assertType = function (obj, type) {
         return obj === null && type === null || obj.constructor.name === type;
@@ -174,15 +175,13 @@ var $p = (function () {
     };
 
     $.checkCons = function (arg, type) {
-        var bexpr = arg.__variant__ === undefined ?
+        var bexpr = !(arg === null && type === null) &&
+                    (arg.__variant__ === undefined ?
                     (arg.constructor !== type)    :
-                    (arg.__variant__ !== type.__name__);
+                    (arg.__variant__ !== type.__name__));
 
         if (bexpr)
-            throw new PatternMatchingException('Provided argument of type '
-            + arg.constructor.name
-            + '. Expected '
-            + (type.name !== '' ? type.name : type.__name__));
+            throw new PatternMatchingException('Provided wrong type of argument: ' + arg.constructor.name);
     };
 
     $.equalArr = function (a1, a2, cmp) {
@@ -239,6 +238,7 @@ var $p = (function () {
             'Boolean': 0,
             'Array': 0,
             'Function': 0, // TODO
+            'ADT': 0, // TODO
             'PAR': 0,
             'WC': 0,
             'FVC': 0
@@ -255,6 +255,8 @@ var $p = (function () {
                 tmap.FVC++;
             else if ($.isArr(v))    // Array
                 tmap.Array++;
+            else if ($.ADT_REGEX.test(v))
+                tmap.ADT++;
             else if ($.PAR_REGEX.test(v))                             // Parameter
                 tmap.PAR++;
         });
@@ -395,6 +397,21 @@ var $p = (function () {
                 }
             }
         }
+        else if (type === 'ADT') {
+            fn = o[val + ''];
+
+            if (fn !== undefined) return fn();
+            else {
+                if ((res = $.hasPattern(keys, $.PAR_REGEX)) !== null) {
+                    fn = o[res];
+                    return fn(val);
+                }
+                else {
+                    fn = o['_'];
+                    return fn();
+                }
+            }
+        }
         // FALSY VALUES
         else {
 
@@ -417,20 +434,32 @@ var $p = (function () {
         };
     };
 
-    _.variant = function (name, global) {
+    _.variant = function (name, o, global) {
         global = (global === undefined ? false : global);
         var cons = global ? window : _;
 
-        cons[name] = function () {};
+        cons[name] = function (o) {
+            if (!(this instanceof cons[name]))
+                return new cons[name](o);
+
+            this.constructors = o;
+        };
         cons[name].__name__ = name;
-        cons[name].make = function (o) {
-            var keys = Object.keys(o);
+
+        var variant = cons[name](o);
+
+        (function (variant) {
+            var o = variant.constructors,
+                keys = Object.keys(o);
 
             keys.forEach(function (k) {
                 var type = o[k];
 
+                /*cons[k].__variant__ = name;
+                cons[k].__name__ = k;*/
                 cons[k] = function (v) {
-                    cons[k].__variant__ = name; // This refers to window object
+                    if (!(this instanceof cons[k]))
+                        return new cons[k](v);
 
                     if (Array.isArray(v) && Array.isArray(type)) { // More args
                         for (var i = 0, len = v.length; i < len; i++)
@@ -445,11 +474,12 @@ var $p = (function () {
                     else {
                         throw new PatternMatchingException('Types not compatible');
                     }
-                }
+                };
+                cons[k].__variant__ = name;
             });
-        };
+        })(variant);
 
-        return cons[name]; // Chaining capabilities
+        return variant; // Chaining capabilities
     };
 
     /**
