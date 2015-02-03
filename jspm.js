@@ -105,6 +105,12 @@ var $p = (function () {
         };
     }
 
+    if (!Array.isArray) {
+        Array.isArray = function(arg) {
+            return Object.prototype.toString.call(arg) === '[object Array]';
+        };
+    }
+
     // Exceptions
     function PatternMatchingException(message) {
         this.message = message;
@@ -167,6 +173,18 @@ var $p = (function () {
         return null;
     };
 
+    $.checkCons = function (arg, type) {
+        var bexpr = arg.__variant__ === undefined ?
+                    (arg.constructor !== type)    :
+                    (arg.__variant__ !== type.__name__);
+
+        if (bexpr)
+            throw new PatternMatchingException('Provided argument of type '
+            + arg.constructor.name
+            + '. Expected '
+            + (type.name !== '' ? type.name : type.__name__));
+    };
+
     $.equalArr = function (a1, a2, cmp) {
         cmp = cmp || $.cmp;
 
@@ -221,7 +239,6 @@ var $p = (function () {
             'Boolean': 0,
             'Array': 0,
             'Function': 0, // TODO
-            'Object': 0, // TODO
             'PAR': 0,
             'WC': 0,
             'FVC': 0
@@ -317,7 +334,7 @@ var $p = (function () {
 
             // Order keys
             keys.sort($.compareArrayPtrFn);
-            console.log(keys);
+
             // Loop through patterns
             for (var i = 0, len = keys.length; i < len; i++) {
                 var ptr = keys[i].replace(/\s+/g, '');
@@ -378,6 +395,7 @@ var $p = (function () {
                 }
             }
         }
+        // FALSY VALUES
         else {
 
         }
@@ -389,10 +407,8 @@ var $p = (function () {
      * @returns {Function}
      */
     _.fun = function (o) {
-        // Get keys
-        var ks = Object.keys(o);
-        // Infer type, redundancy and exhaustiveness check
-        var t = $.inferType(ks);
+        var ks = Object.keys(o), // Get keys
+            t = $.inferType(ks); // Infer type, redundancy and exhaustiveness check
 
         return function (val, bindings) {
             // Check input consistency (e.g. expected input of type...)
@@ -401,12 +417,53 @@ var $p = (function () {
         };
     };
 
+    _.variant = function (name, global) {
+        global = (global === undefined ? false : global);
+        var cons = global ? window : _;
+
+        cons[name] = function () {};
+        cons[name].__name__ = name;
+        cons[name].make = function (o) {
+            var keys = Object.keys(o);
+
+            keys.forEach(function (k) {
+                var type = o[k];
+
+                cons[k] = function (v) {
+                    cons[k].__variant__ = name; // This refers to window object
+
+                    if (Array.isArray(v) && Array.isArray(type)) { // More args
+                        for (var i = 0, len = v.length; i < len; i++)
+                            $.checkCons(v[i], type[i]);
+
+                        return cons[k];
+                    }
+                    else if (!Array.isArray(v) && !Array.isArray(type)) { // One arg
+                        $.checkCons(v, type);
+                        return cons[k];
+                    }
+                    else {
+                        throw new PatternMatchingException('Types not compatible');
+                    }
+                }
+            });
+        };
+
+        return cons[name]; // Chaining capabilities
+    };
 
     /**
-     * var suit = $p.def_type(''); // suit is a cons
-     * $p.adt({
-     *      'King': suit,
-     *      'Queen': suit,
+     * $p.fun({
+     *      'name|par1:type,par2:type|ret:type': function () { return 0; }
+     * });
+     *
+     * $p.fun({
+     *      'False(3)': function (n) { return n; }
+     * });
+     *
+     * $p.variant('Suit').make({
+     *      'King': suit, // Variant
+     *      'Queen': suit, // Variant
      *      'Trump': Number,
      *      'Joker': null
      * });
