@@ -176,7 +176,8 @@ var $p = (function () {
     };
 
     $.checkCons = function (arg, type) {
-        var bexpr = !(arg === null && type === null) &&
+        var bexpr = !(type === $p.Any) &&
+                    !(arg === null && type === null) &&
                     (arg.__variant__ === undefined ?
                     (arg.constructor !== type)    :
                     (arg.__variant__ !== type.__name__));
@@ -446,7 +447,9 @@ var $p = (function () {
                 keys.forEach(function (k) {
                     var type = o[k];
 
-                    cons[k] = function (v) {
+                    cons[k] = function () {
+                        var v = (arguments.length === 1 ? arguments[0] : Array.prototype.slice.call(arguments));
+
                         if (!(this instanceof cons[k]))
                             return new cons[k](v);
 
@@ -480,6 +483,8 @@ var $p = (function () {
 
         return cons[name];
     };
+
+    _.Any = {};
 
     return _;
 })();

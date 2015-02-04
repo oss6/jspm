@@ -11,8 +11,10 @@ Pattern matching is used to recognise the form of a given value and let the comp
 
 Features of jspm
 ----------------
-- Pattern matching on **atoms** (object literals, numbers, strings, null, undefined)
+- Pattern matching on **atoms** (object literals, numbers, booleans null, undefined - no strings because regexp does the job)
 - Pattern matching on **arrays** (like lists)
+- Pattern matching on **ADTs** (Algebraic Data Types)
+- Definition of **variants**
 - **Exhaustiveness** and **redundancy** checking
 - Usage of **bindings**, **parameters** and **wild cards**
 
@@ -23,8 +25,8 @@ Pattern match on atoms
 **Factorial definition**
 ``` javascript
 var fact = $p.fun({
-    '0': function ()  { return 1 },
-    'n': function (n) { return n * fact(n - 1) }
+    '0'    : function ()  { return 1 },
+    '__n__': function (n) { return n * fact(n - 1) }
 });
 ```
 
@@ -51,14 +53,36 @@ sum([1, 4, 3]);
 << 8
 ```
 
+Variants definition
+-------------------
+Variants are special types of ADTs that allow to define data types (variants) with constructors that are formed
+by other types.
+``` javascript
+$p.variant('list', true).make({
+    'Empty': null,
+    'Cons': [$p.Any, list]
+});
+
+var myList = Cons(1, Cons(2, Cons(3, Empty(null)))); // Creates a list of 3 elements
+```
+
+Pattern matching on variants
+----------------------------
+``` javascript
+var sum = $p.fun({
+    'list:Empty' : function () { return 0 },
+    'list:Cons'  : function (head, tail) { return head + sum(tail)  }
+});
+```
+
 Bindings
 --------
 Bindings are a useful way to pass more information to the function matching the pattern. Below usage example:
 
 ``` javascript
 var add = $p.fun({
-    '0': function () { return this.val },
-    'n': function (n) { return n + this.val }
+    '0'     : function () { return this.val },
+    '__n__' : function (n) { return n + this.val }
 });
 
 add(4, {'val': 3});
@@ -101,4 +125,4 @@ same patterns).
 Next release
 ------------
 In the next release jspm will support **guards** as well as more syntactic sugar for both pattern matching and
-sum type definition. In addition there will be support for ADTs.
+sum type definition.
