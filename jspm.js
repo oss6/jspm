@@ -328,12 +328,12 @@ var $p = (function () {
      */
     $.inferType = function (ks) {
         var tmap = {
+                'PAR'      : 0,
+                'WC'       : 0,
                 'Number'   : 0,
                 'Boolean'  : 0,
                 'Array'    : 0,
                 'Function' : 0, // TODO
-                'PAR'      : 0,
-                'WC'       : 0,
                 'FVC'      : 0
             },
             m; // For matching purposes
@@ -345,9 +345,9 @@ var $p = (function () {
                 tmap.Number++;
             else if (v === null || v === undefined)                   // Falsy values
                 tmap.FVC++;
-            else if ($.isArr(v))    // Array
+            else if ($.isArr(v))                                      // Array
                 tmap.Array++;
-            else if ((m = v.match($.ADT_REGEX))) {
+            else if ((m = v.match($.ADT_REGEX))) {                    // ADTs
                 var variant = m[0].split(':')[0];
                 if (tmap[variant] === undefined)
                     tmap[variant] = 1;
@@ -370,7 +370,7 @@ var $p = (function () {
             tmKeys = Object.keys(tmap);
 
         tmKeys.forEach(function (t) {
-            if (tmap[t] > maxc) {
+            if (tmap[t] >= maxc) {
                 maxr = t;
                 maxc = tmap[t];
             }
@@ -379,7 +379,8 @@ var $p = (function () {
         if (!$.checkOtherZero(maxr, tmKeys, tmap))
             throw new PatternMatchingException('Patterns are not consistent (not the same type)');
 
-        // Check for redundancies and exhaustiveness
+        // Check for redundancies and exhaustiveness (refuse to work with just WC or just PAR)
+
         return maxr;
     };
 
