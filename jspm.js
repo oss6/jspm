@@ -122,12 +122,11 @@ var $p = (function () {
         'CONS2': /^(\w+::\w+)+$/g,
         'CONS3': /^\w+\.\.\w+$/g
     };
-
     $.PAR_REGEX = /^__\w+__$/g;
-    $.ADT_REGEX = /^\w+\(.*\)$/g;
+    $.ADT_REGEX = /^\w+:\w+$/g;
 
     $.assertType = function (obj, type) {
-        return obj === null && type === null || obj.constructor.name === type;
+        return obj === null && type === null || obj.constructor.name === type || obj.__variant__ === type;
     };
 
     $.isZero = function (v) {
@@ -234,37 +233,37 @@ var $p = (function () {
      */
     $.inferType = function (ks) {
         var tmap = {
-            'Number': 0,
-            'Boolean': 0,
-            'Array': 0,
-            'Function': 0, // TODO
-            'ADT': 0, // TODO
-            'PAR': 0,
-            'WC': 0,
-            'FVC': 0
-        };
+                'Number'   : 0,
+                'Boolean'  : 0,
+                'Array'    : 0,
+                'Function' : 0, // TODO
+                'PAR'      : 0,
+                'WC'       : 0,
+                'FVC'      : 0
+            },
+            m; // For matching purposes
 
         ks.forEach(function (v) {
             if (v === 'true' || v === 'false')                        // Boolean
                 tmap.Boolean++;
             else if ($.isNum(v))                                      // Number
                 tmap.Number++;
-            else if (v === '_')                                       // Wildcard
-                tmap.WC++;
             else if (v === null || v === undefined)                   // Falsy values
                 tmap.FVC++;
             else if ($.isArr(v))    // Array
                 tmap.Array++;
-            else if ($.ADT_REGEX.test(v))
-                tmap.ADT++;
+            else if ((m = v.match($.ADT_REGEX))) {
+                var variant = m[0].split(':')[0];
+                if (tmap[variant] === undefined)
+                    tmap[variant] = 1;
+                else
+                    tmap[variant]++;
+            }
             else if ($.PAR_REGEX.test(v))                             // Parameter
                 tmap.PAR++;
+            else if (v === '_')                                       // Wildcard
+                tmap.WC++;
         });
-
-        console.log(tmap);
-
-        if ((tmap.PAR === 0 && tmap.WC === 0) || Math.abs(tmap.PAR - tmap.WC) !== 1)
-            throw new PatternMatchingException('Pattern matching is not consistent');
 
         // Get max of counts
         // for all types except string:
@@ -286,7 +285,6 @@ var $p = (function () {
             throw new PatternMatchingException('Patterns are not consistent (not the same type)');
 
         // Check for redundancies and exhaustiveness
-
         return maxr;
     };
 
@@ -397,10 +395,11 @@ var $p = (function () {
                 }
             }
         }
-        else if (type === 'ADT') {
-            fn = o[val + ''];
-
-            if (fn !== undefined) return fn();
+        // ADT PATTERN MATCHING
+        else {
+            fn = o[val.__variant__ + ':' + val.__name__];
+            
+            if (fn !== undefined) return fn(val.value);
             else {
                 if ((res = $.hasPattern(keys, $.PAR_REGEX)) !== null) {
                     fn = o[res];
@@ -411,10 +410,6 @@ var $p = (function () {
                     return fn();
                 }
             }
-        }
-        // FALSY VALUES
-        else {
-
         }
     };
 
@@ -446,26 +441,20 @@ var $p = (function () {
                 keys.forEach(function (k) {
                     var type = o[k];
 
-                    /*cons[k].__variant__ = name;
-                     cons[k].__name__ = k;*/
                     cons[k] = function (v) {
                         if (!(this instanceof cons[k]))
                             return new cons[k](v);
 
                         var tstring = function _tstring (o) {
-                            if (o.value !== null && o.value.constructor !== o) {
-                                return o.__name__ + '(' + _tstring(o.value) + ')';
-                            }
-                            else {
-                                return o.__name__ + '(' + o.value + ')';
-                            }
+                            return (o.value !== null && o.value.constructor !== o) ?
+                                o.__name__ + '(' + _tstring(o.value) + ')' :
+                                o.__name__ + '(' + o.value + ')';
                         };
 
                         this.__variant__ = name;
                         this.__name__ = k;
                         this.value = v;
                         this.toString = function () {
-                            // TODO
                             return tstring(this);
                         };
                         
@@ -481,7 +470,6 @@ var $p = (function () {
                             throw new PatternMatchingException('Types not compatible');
                         }
                     };
-                    //cons[k].__variant__ = name;
                 });
             }
         };
