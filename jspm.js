@@ -1,3 +1,5 @@
+
+
 var $p = (function () {
 
     var $ = {}, // Public namespace
@@ -398,8 +400,11 @@ var $p = (function () {
         // ADT PATTERN MATCHING
         else {
             fn = o[val.__variant__ + ':' + val.__name__];
-            
-            if (fn !== undefined) return fn(val.value);
+
+            if (fn !== undefined) {
+                var args = val.value;
+                return Array.isArray(args) ? fn.apply(null, args) : fn(val.value);
+            }
             else {
                 if ((res = $.hasPattern(keys, $.PAR_REGEX)) !== null) {
                     fn = o[res];
@@ -458,7 +463,6 @@ var $p = (function () {
                             return tstring(this);
                         };
                         
-                        
                         if (Array.isArray(v) && Array.isArray(type)) {          // More args
                             for (var i = 0, len = v.length; i < len; i++)
                                 $.checkCons(v[i], type[i]);
@@ -476,25 +480,6 @@ var $p = (function () {
 
         return cons[name];
     };
-
-    /**
-     * $p.fun({
-     *      'name|par1:type,par2:type|ret:type': function () { return 0; }
-     * });
-     *
-     * $p.fun({
-     *      'False(3)': function (n) { return n; }
-     * });
-     *
-     * $p.variant('Suit').make({
-     *      'King': suit, // Variant
-     *      'Queen': suit, // Variant
-     *      'Trump': Number,
-     *      'Joker': null
-     * });
-     *
-     * Trump(3);
-     */
 
     return _;
 })();
