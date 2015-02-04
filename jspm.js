@@ -434,52 +434,59 @@ var $p = (function () {
         };
     };
 
-    _.variant = function (name, o, global) {
+    _.variant = function (name, global) {
         global = (global === undefined ? false : global);
         var cons = global ? window : _;
 
-        cons[name] = function (o) {
-            if (!(this instanceof cons[name]))
-                return new cons[name](o);
+        cons[name] = {
+            '__name__': name,
+            'make': function (o) {
+                var keys = Object.keys(o);
 
-            this.constructors = o;
+                keys.forEach(function (k) {
+                    var type = o[k];
+
+                    /*cons[k].__variant__ = name;
+                     cons[k].__name__ = k;*/
+                    cons[k] = function (v) {
+                        if (!(this instanceof cons[k]))
+                            return new cons[k](v);
+
+                        var tstring = function _tstring (o) {
+                            if (o.value !== null && o.value.constructor !== o) {
+                                return o.__name__ + '(' + _tstring(o.value) + ')';
+                            }
+                            else {
+                                return o.__name__ + '(' + o.value + ')';
+                            }
+                        };
+
+                        this.__variant__ = name;
+                        this.__name__ = k;
+                        this.value = v;
+                        this.toString = function () {
+                            // TODO
+                            return tstring(this);
+                        };
+                        
+                        
+                        if (Array.isArray(v) && Array.isArray(type)) {          // More args
+                            for (var i = 0, len = v.length; i < len; i++)
+                                $.checkCons(v[i], type[i]);
+                        }
+                        else if (!Array.isArray(v) && !Array.isArray(type)) {   // One arg
+                            $.checkCons(v, type);
+                        }
+                        else {
+                            throw new PatternMatchingException('Types not compatible');
+                        }
+                    };
+                    //cons[k].__variant__ = name;
+                });
+            }
         };
-        cons[name].__name__ = name;
 
-        var variant = cons[name](o);
-
-        (function (variant) {
-            var o = variant.constructors,
-                keys = Object.keys(o);
-
-            keys.forEach(function (k) {
-                var type = o[k];
-
-                /*cons[k].__variant__ = name;
-                cons[k].__name__ = k;*/
-                cons[k] = function (v) {
-                    if (!(this instanceof cons[k]))
-                        return new cons[k](v);
-
-                    if (Array.isArray(v) && Array.isArray(type)) { // More args
-                        for (var i = 0, len = v.length; i < len; i++)
-                            $.checkCons(v[i], type[i]);
-
-                        return cons[k];
-                    }
-                    else if (!Array.isArray(v) && !Array.isArray(type)) { // One arg
-                        $.checkCons(v, type);
-                        return cons[k];
-                    }
-                    else {
-                        throw new PatternMatchingException('Types not compatible');
-                    }
-                };
-                cons[k].__variant__ = name;
-            });
-        })(variant);
-
-        return variant; // Chaining capabilities
+        return cons[name];
     };
 
     /**
