@@ -1,4 +1,7 @@
-
+/**
+ * jspm - Pattern matching in Javascript
+ * Author: Ossama Edbali
+ */
 
 var $p = (function () {
 
