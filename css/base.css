@@ -11,6 +11,7 @@ body {
     font-family: "Playfair Display" serif;
     background: url("../img/halftone.png") repeat;
     background-size: cover;
+    overflow: auto;
 }
 
 .header h1 {
@@ -47,21 +48,43 @@ body {
 }
 
 .content {
-    /*background-color: rgba(237, 237, 237, 0.43);*/
+    font-family: "Merriweather" serif;
     margin: 30px 8%;
     padding: 7px 20px;
-}
-
-.content *:not(.description) {
-    font-family: "Merriweather" serif;
 }
 
 .description {
     border-left: 4px solid #550000;
     margin-left: 4%;
     font-size: 1.2em;
-    font-weight: bold;
+    font-weight: 100;
     padding: 10px 15px;
     background-color: #fff;
 }
 
+.doc-entry {
+    background-color: rgba(194, 204, 209, 0.32);
+    padding: 7px 15px;
+    border: 1px solid #898989;
+    border-radius: 5px;
+    width: 50%;
+    margin: 15px auto;
+}
+
+.doc-entry h3.member {
+    font-family: Consolas, 'Monaco For Powerline', monospace;
+    color: #8d3c3c;
+}
+
+pre {
+    font-family: Consolas, 'Monaco For Powerline', monospace;
+}
+
+hr {
+    border: 0;
+    height: 1px;
+    background-image: -webkit-linear-gradient(left, rgba(0,0,0,0), rgba(0,0,0,0.75), rgba(0,0,0,0));
+    background-image:    -moz-linear-gradient(left, rgba(0,0,0,0), rgba(0,0,0,0.75), rgba(0,0,0,0));
+    background-image:     -ms-linear-gradient(left, rgba(0,0,0,0), rgba(0,0,0,0.75), rgba(0,0,0,0));
+    background-image:      -o-linear-gradient(left, rgba(0,0,0,0), rgba(0,0,0,0.75), rgba(0,0,0,0));
+}

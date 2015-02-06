@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>jspm - Documentation</title>
+
+    <link href='http://fonts.googleapis.com/css?family=Merriweather' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Playfair+Display' rel='stylesheet' type='text/css'>
+    <link type="text/css" rel="stylesheet" href="css/base.css">
+</head>
+<body>
+    <div class="wrapper">
+        <div class="header">
+            <h1>&Jfr;spm
+                <small>Pattern matching in JS</small>
+            </h1>
+            <ul class="menu">
+                <li><a href="index.html">Home</a></li>
+                <li class="active"><a href="docs.html">Docs</a></li>
+                <li><a href="https://github.com/oss6?tab=repositories">Other projects</a></li>
+            </ul>
+
+        </div>
+
+        <div class="content">
+            <h2>Documentation</h2>
+            <p>
+                Lorem ipsum dolor sit amet, consectetur adipisicing elit. Cupiditate delectus dignissimos molestiae officia officiis omnis quod sint! Dolorum excepturi expedita modi qui sint velit. Cupiditate delectus id maxime quibusdam reiciendis.
+            </p>
+
+            <div class="doc-entry">
+                <h3 class="member">.fun</h3>
+                <p>
+                    Defines a pattern matching function. Exhaustiveness and redundancies are checked.
+                </p>
+                <hr>
+                <p><b>Parameters</b></p>
+                <ul>
+                    <li><b>o : object</b> &rightarrow; The pattern matching map (pattern, function)</li>
+                </ul>
+                <hr>
+                <p>
+                    <b>Return</b><br>
+                    Returns a function that when called with an appropriate argument matches the pattern.
+                </p>
+                <p><b>Usage</b></p>
+                <pre>
+var sum = $p.fun({
+    '[]'    : function () { return 0 },
+    'x::xs' : function (x, xs) { return x + sum(xs) }
+});
+                </pre>
+            </div>
+
+            <div class="doc-entry">
+                <h3 class="member">.inferType</h3>
+                <p>
+                    Defines a variant type (or union a special kind of algebraic data types)
+                    which can be recursive.
+                </p>
+                <hr>
+                <p><b>Parameters</b></p>
+                <ul>
+                    <li><b>name : string</b> &rightarrow; The variant's name</li>
+                    <li><b>global : boolean</b> &rightarrow; Whether to store tha variant in the global variable (window)</li>
+                </ul>
+                <hr>
+                <p>
+                    <b>Return</b><br>
+                    Returns a new object of the defined variant
+                </p>
+            </div>
+
+            <div class="doc-entry">
+                <h3 class="member">.variant</h3>
+                <p>
+                    Defines a variant type (or union a special kind of algebraic data types)
+                    which can be recursive.
+                </p>
+                <hr>
+                <p><b>Parameters</b></p>
+                <ul>
+                    <li><b>name : string</b> &rightarrow; The variant's name</li>
+                    <li><b>global : boolean</b> &rightarrow; Whether to store tha variant in the global variable (window)</li>
+                </ul>
+                <hr>
+                <p>
+                    <b>Return</b><br>
+                    Returns a new object of the defined variant
+                </p>
+            </div>
+
+            <div class="doc-entry">
+                <h3 class="member">varObj.make</h3>
+                <p>
+                    Defines a variant type (or union a special kind of algebraic data types)
+                    which can be recursive.
+                </p>
+                <hr>
+                <p><b>Parameters</b></p>
+                <ul>
+                    <li><b>name : string</b> &rightarrow; The variant's name</li>
+                    <li><b>global : boolean</b> &rightarrow; Whether to store tha variant in the global variable (window)</li>
+                </ul>
+                <hr>
+                <p>
+                    <b>Return</b><br>
+                    Returns a new object of the defined variant
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript" src="src/jspm.js"></script>
+</body>
+</html>

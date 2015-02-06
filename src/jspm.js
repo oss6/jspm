@@ -325,69 +325,6 @@ var $p = (function () {
     };
 
     /**
-     * Type inference, exhaustiveness and redundancies check
-     * @param ks Pattern keys
-     * @returns {string} Type name
-     */
-    $.inferType = function (ks) {
-        var tmap = {
-                'PAR'      : 0,
-                'WC'       : 0,
-                'Number'   : 0,
-                'Boolean'  : 0,
-                'Array'    : 0,
-                'Function' : 0, // TODO
-                'FVC'      : 0
-            },
-            m; // For matching purposes
-
-        ks.forEach(function (v) {
-            if (v === 'true' || v === 'false')                        // Boolean
-                tmap.Boolean++;
-            else if ($.isNum(v))                                      // Number
-                tmap.Number++;
-            else if (v === null || v === undefined)                   // Falsy values
-                tmap.FVC++;
-            else if ($.isArr(v))                                      // Array
-                tmap.Array++;
-            else if ((m = v.match($.ADT_REGEX))) {                    // ADTs
-                var variant = m[0].split(':')[0];
-                if (tmap[variant] === undefined)
-                    tmap[variant] = 1;
-                else
-                    tmap[variant]++;
-            }
-            else if ($.PAR_REGEX.test(v))                             // Parameter
-                tmap.PAR++;
-            else if (v === '_')                                       // Wildcard
-                tmap.WC++;
-        });
-
-        // Get max of counts
-        // for all types except string:
-        //  if the number of values is bigger than 0 and wc or par is 1 then type is valid
-        // string:
-        //
-        var maxc = -1,
-            maxr = '',
-            tmKeys = Object.keys(tmap);
-
-        tmKeys.forEach(function (t) {
-            if (tmap[t] >= maxc) {
-                maxr = t;
-                maxc = tmap[t];
-            }
-        });
-
-        if (!$.checkOtherZero(maxr, tmKeys, tmap))
-            throw new PatternMatchingException('Patterns are not consistent (not the same type)');
-
-        // Check for redundancies and exhaustiveness (refuse to work with just WC or just PAR)
-
-        return maxr;
-    };
-
-    /**
      *
      * @param o Object map
      * @param val Value to match against
@@ -516,13 +453,76 @@ var $p = (function () {
     };
 
     /**
+     * Type inference, exhaustiveness and redundancies check
+     * @param ks Pattern keys
+     * @returns {string} Type name
+     */
+    _.inferType = function (ks) {
+        var tmap = {
+                'PAR'      : 0,
+                'WC'       : 0,
+                'Number'   : 0,
+                'Boolean'  : 0,
+                'Array'    : 0,
+                'Function' : 0, // TODO
+                'FVC'      : 0
+            },
+            m; // For matching purposes
+
+        ks.forEach(function (v) {
+            if (v === 'true' || v === 'false')                        // Boolean
+                tmap.Boolean++;
+            else if ($.isNum(v))                                      // Number
+                tmap.Number++;
+            else if (v === null || v === undefined)                   // Falsy values
+                tmap.FVC++;
+            else if ($.isArr(v))                                      // Array
+                tmap.Array++;
+            else if ((m = v.match($.ADT_REGEX))) {                    // ADTs
+                var variant = m[0].split(':')[0];
+                if (tmap[variant] === undefined)
+                    tmap[variant] = 1;
+                else
+                    tmap[variant]++;
+            }
+            else if ($.PAR_REGEX.test(v))                             // Parameter
+                tmap.PAR++;
+            else if (v === '_')                                       // Wildcard
+                tmap.WC++;
+        });
+
+        // Get max of counts
+        // for all types except string:
+        //  if the number of values is bigger than 0 and wc or par is 1 then type is valid
+        // string:
+        //
+        var maxc = -1,
+            maxr = '',
+            tmKeys = Object.keys(tmap);
+
+        tmKeys.forEach(function (t) {
+            if (tmap[t] >= maxc) {
+                maxr = t;
+                maxc = tmap[t];
+            }
+        });
+
+        if (!$.checkOtherZero(maxr, tmKeys, tmap))
+            throw new PatternMatchingException('Patterns are not consistent (not the same type)');
+
+        // Check for redundancies and exhaustiveness (refuse to work with just WC or just PAR)
+
+        return maxr;
+    };
+
+    /**
      * Pattern matching higher-order function
      * @param o The object with the patterns and their mappings
      * @returns {Function}
      */
     _.fun = function (o) {
         var ks = Object.keys(o), // Get keys
-            t = $.inferType(ks); // Infer type, redundancy and exhaustiveness check
+            t = _.inferType(ks); // Infer type, redundancy and exhaustiveness check
 
         return function (val, bindings) {
             // Check input consistency (e.g. expected input of type...)
@@ -550,8 +550,6 @@ var $p = (function () {
                             return new cons[k](v);
 
                         var tstring = function _tstring (o) {
-                            // console.log(o);
-
                             if (o !== null && o.__variant__ !== undefined) {
                                 if (Array.isArray(o)) {
                                     return o.map(function (el) {
