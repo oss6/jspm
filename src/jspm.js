@@ -3,11 +3,28 @@
  * Author: Ossama Edbali
  */
 
-var $p = (function () {
+(function () {
 
-    var $ = {}, // Public namespace
-        _ = {}, // Private namespace
-        global = window;
+    var _ = {}, // Private namespace
+        root = this;
+
+    // Safe reference
+    var $p = function (obj) {
+        if (obj instanceof $p) return obj;
+        if (!(this instanceof $p)) return new $p(obj);
+        this._wrapped = obj;
+    };
+
+    // Export jspm
+    if (typeof exports !== 'undefined') {
+        if (typeof module !== 'undefined' && module.exports) {
+            exports = module.exports = $p;
+        }
+        exports.$p = $p;
+    }
+    else {
+        root.$p = $p;
+    }
 
     // Polyfills
     // From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys
@@ -64,50 +81,29 @@ var $p = (function () {
                 throw new TypeError(' this is null or not defined');
             }
 
-            // 1. Let O be the result of calling ToObject passing the |this| value as the argument.
             var O = Object(this);
 
-            // 2. Let lenValue be the result of calling the Get internal method of O with the argument "length".
-            // 3. Let len be ToUint32(lenValue).
             var len = O.length >>> 0;
 
-            // 4. If IsCallable(callback) is false, throw a TypeError exception.
-            // See: http://es5.github.com/#x9.11
             if (typeof callback !== "function") {
                 throw new TypeError(callback + ' is not a function');
             }
 
-            // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
             if (arguments.length > 1) {
                 T = thisArg;
             }
 
-            // 6. Let k be 0
             k = 0;
 
-            // 7. Repeat, while k < len
             while (k < len) {
-
                 var kValue;
 
-                // a. Let Pk be ToString(k).
-                //   This is implicit for LHS operands of the in operator
-                // b. Let kPresent be the result of calling the HasProperty internal method of O with argument Pk.
-                //   This step can be combined with c
-                // c. If kPresent is true, then
                 if (k in O) {
-
-                    // i. Let kValue be the result of calling the Get internal method of O with argument Pk.
                     kValue = O[k];
-
-                    // ii. Call the Call internal method of callback with T as the this value and
-                    // argument list containing kValue, k, and O.
                     callback.call(T, kValue, k, O);
                 }
-                // d. Increase k by 1.
                 k++;
             }
-            // 8. return undefined
         };
     }
 
@@ -123,80 +119,31 @@ var $p = (function () {
                 throw new TypeError(' this is null or not defined');
             }
 
-            // 1. Let O be the result of calling ToObject passing the |this|
-            //    value as the argument.
             var O = Object(this);
-
-            // 2. Let lenValue be the result of calling the Get internal
-            //    method of O with the argument "length".
-            // 3. Let len be ToUint32(lenValue).
             var len = O.length >>> 0;
 
-            // 4. If IsCallable(callback) is false, throw a TypeError exception.
-            // See: http://es5.github.com/#x9.11
             if (typeof callback !== 'function') {
                 throw new TypeError(callback + ' is not a function');
             }
 
-            // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
             if (arguments.length > 1) {
                 T = thisArg;
             }
 
-            // 6. Let A be a new array created as if by the expression new Array(len)
-            //    where Array is the standard built-in constructor with that name and
-            //    len is the value of len.
             A = new Array(len);
-
-            // 7. Let k be 0
             k = 0;
 
-            // 8. Repeat, while k < len
             while (k < len) {
-
                 var kValue, mappedValue;
 
-                // a. Let Pk be ToString(k).
-                //   This is implicit for LHS operands of the in operator
-                // b. Let kPresent be the result of calling the HasProperty internal
-                //    method of O with argument Pk.
-                //   This step can be combined with c
-                // c. If kPresent is true, then
                 if (k in O) {
-
-                    // i. Let kValue be the result of calling the Get internal
-                    //    method of O with argument Pk.
                     kValue = O[k];
-
-                    // ii. Let mappedValue be the result of calling the Call internal
-                    //     method of callback with T as the this value and argument
-                    //     list containing kValue, k, and O.
                     mappedValue = callback.call(T, kValue, k, O);
-
-                    // iii. Call the DefineOwnProperty internal method of A with arguments
-                    // Pk, Property Descriptor
-                    // { Value: mappedValue,
-                    //   Writable: true,
-                    //   Enumerable: true,
-                    //   Configurable: true },
-                    // and false.
-
-                    // In browsers that support Object.defineProperty, use the following:
-                    // Object.defineProperty(A, k, {
-                    //   value: mappedValue,
-                    //   writable: true,
-                    //   enumerable: true,
-                    //   configurable: true
-                    // });
-
-                    // For best browser support, use the following:
                     A[k] = mappedValue;
                 }
-                // d. Increase k by 1.
                 k++;
             }
 
-            // 9. return A
             return A;
         };
     }
@@ -213,19 +160,19 @@ var $p = (function () {
     }
 
     // Private members
-    $.ARRAY_REGEX = {
-        'CONS1': /^\[.*\]$/g,
-        'CONS2': /^(\w+::\w+)+$/g,
-        'CONS3': /^\w+\.\.\w+$/g
+    _.ARRAY_REGEX = {
+        'CONS1': /^\[.*\]_/g,
+        'CONS2': /^(\w+::\w+)+_/g,
+        'CONS3': /^\w+\.\.\w+_/g
     };
-    $.PAR_REGEX = /^[a-zA-Z]+$/g;
-    $.ADT_REGEX = /^\w+:\w+$/g;
+    _.PAR_REGEX = /^[a-zA-Z]+_/g;
+    _.ADT_REGEX = /^\w+:\w+_/g;
 
-    $.assertType = function (obj, type) {
-        return obj === null && type === null || obj.constructor.name === type || obj instanceof global[type];
+    _.assertType = function (obj, type) {
+        return obj === null && type === null || obj.constructor.name === type || obj instanceof root[type];
     };
 
-    $.inherits = function(childCtor, parentCtor) {
+    _.inherits = function(childCtor, parentCtor) {
         /** @constructor */
         function tempCtor() {};
         tempCtor.prototype = parentCtor.prototype;
@@ -234,15 +181,15 @@ var $p = (function () {
         childCtor.prototype.constructor = childCtor;
     };
 
-    $.isEmpty = function (obj) {
+    _.isEmpty = function (obj) {
         return (Object.getOwnPropertyNames(obj).length === 0);
     };
 
-    $.isZero = function (v) {
+    _.isZero = function (v) {
         return v === 0;
     };
 
-    $.all = function (p, arr) {
+    _.all = function (p, arr) {
         arr.forEach(function (v) {
             if (!p(v)) return false;
         });
@@ -250,7 +197,7 @@ var $p = (function () {
         return true;
     };
 
-    $.range = function (low, high) {
+    _.range = function (low, high) {
         var arr = [];
 
         for (var i = low; i <= high; i++)
@@ -259,11 +206,11 @@ var $p = (function () {
         return arr;
     };
 
-    $.cmp = function (a, b) {
+    _.cmp = function (a, b) {
         return a - b;
     };
 
-    $.hasPattern = function (arr, reg) {
+    _.hasPattern = function (arr, reg) {
         for (var i = 0, len = arr.length; i < len; i++) {
             if (arr[i].match(reg))
                 return arr[i];
@@ -272,8 +219,8 @@ var $p = (function () {
         return null;
     };
 
-    $.equalArr = function (a1, a2, cmp) {
-        cmp = cmp || $.cmp;
+    _.equalArr = function (a1, a2, cmp) {
+        cmp = cmp || _.cmp;
 
         if (a1.length !== a2.length) return false;
 
@@ -285,28 +232,28 @@ var $p = (function () {
         return true;
     };
 
-    $.isNum = function (str) {
+    _.isNum = function (str) {
         return !isNaN(str);
     };
 
     // compare: x::xs and x1::x2::xs (latter to be checked first)
-    $.compareArrayPtrFn = function (a, b) {
-        if (a === '_' || a.match($.PAR_REGEX)) return 1;
-        if ((a.match($.ARRAY_REGEX.CONS1) && b.match($.ARRAY_REGEX.CONS1)) ||
-            (a.match($.ARRAY_REGEX.CONS2) && b.match($.ARRAY_REGEX.CONS2)) ||
-            (a.match($.ARRAY_REGEX.CONS3) && b.match($.ARRAY_REGEX.CONS3))) return 0;
-        if (a.match($.ARRAY_REGEX.CONS2)) return 1;
+    _.compareArrayPtrFn = function (a, b) {
+        if (a === '_' || a.match(_.PAR_REGEX)) return 1;
+        if ((a.match(_.ARRAY_REGEX.CONS1) && b.match(_.ARRAY_REGEX.CONS1)) ||
+            (a.match(_.ARRAY_REGEX.CONS2) && b.match(_.ARRAY_REGEX.CONS2)) ||
+            (a.match(_.ARRAY_REGEX.CONS3) && b.match(_.ARRAY_REGEX.CONS3))) return 0;
+        if (a.match(_.ARRAY_REGEX.CONS2)) return 1;
 
         return -1;
     };
 
-    $.isArr = function (str) {
-        return $.ARRAY_REGEX.CONS1.test(str) ||
-            $.ARRAY_REGEX.CONS2.test(str) ||
-            $.ARRAY_REGEX.CONS3.test(str);
+    _.isArr = function (str) {
+        return _.ARRAY_REGEX.CONS1.test(str) ||
+            _.ARRAY_REGEX.CONS2.test(str) ||
+            _.ARRAY_REGEX.CONS3.test(str);
     };
 
-    $.checkOtherZero = function (type, keys, obj) {
+    _.checkOtherZero = function (type, keys, obj) {
         keys.forEach(function (t) {
             if (t !== type && (t !== 'WC' && obj[t] > 0))
                 return false;
@@ -323,7 +270,7 @@ var $p = (function () {
      * @param type Type of the patterns
      * @returns {Function}
      */
-    $.match = function (o, val, bindings, type) {
+    _.match = function (o, val, bindings, type) {
         var fn, parts, arr;
 
         // Apply bindings
@@ -348,7 +295,7 @@ var $p = (function () {
             }
             else {
 
-                if ((res = $.hasPattern(keys, $.PAR_REGEX)) !== null) {
+                if ((res = _.hasPattern(keys, _.PAR_REGEX)) !== null) {
                     fn = o[res];
                     return fn(val);
                 }
@@ -363,14 +310,14 @@ var $p = (function () {
             var res;
 
             // Order keys
-            keys.sort($.compareArrayPtrFn);
+            keys.sort(_.compareArrayPtrFn);
 
             // Loop through patterns
             for (var i = 0, len = keys.length; i < len; i++) {
                 var ptr = keys[i].replace(/\s+/g, '');
 
                 // CONS 1 --> []
-                if ((res = ptr.match($.ARRAY_REGEX.CONS1))) {
+                if ((res = ptr.match(_.ARRAY_REGEX.CONS1))) {
                     var carr = ptr.slice(1, -1);
                     fn = o[ptr];
 
@@ -383,7 +330,7 @@ var $p = (function () {
                     }
                 }
                 // CONS 2 --> x :: xs
-                else if ((res = ptr.match($.ARRAY_REGEX.CONS2))) {
+                else if ((res = ptr.match(_.ARRAY_REGEX.CONS2))) {
                     var hds = [],  // heads (individual elements)
                         tail;      // tail
                     parts = res[0].split('::');
@@ -406,21 +353,21 @@ var $p = (function () {
                     return fn.apply(null, hds);
                 }
                 // CONS 3
-                else if ((res = ptr.match($.ARRAY_REGEX.CONS3))) {
+                else if ((res = ptr.match(_.ARRAY_REGEX.CONS3))) {
                     parts = res[0].split('..');
                     var low   = parseFloat(parts[0]),
                         high  = parseFloat(parts[1]);
 
-                    arr = $.range(low, high);
+                    arr = _.range(low, high);
 
-                    if ($.equalArr(val, arr)) {
+                    if (_.equalArr(val, arr)) {
                         fn = o[res];
                         return fn(val); // check this
                     }
                 }
                 // WILD CARD / PARAMETER
                 else {
-                    if ((res = $.hasPattern(keys, $.PAR_REGEX)) !== null) {
+                    if ((res = _.hasPattern(keys, _.PAR_REGEX)) !== null) {
                         fn = o[res];
                         return fn(val);
                     }
@@ -449,8 +396,8 @@ var $p = (function () {
                 // Cons(Cons(Nil))
                 // Cons(x) --> Cons(Nil)
 
-                if ((res = $.hasPattern(keys, re)) !== null) {
-                    var depth = $.flattenRecursiveStructure(res).length - 1,
+                if ((res = _.hasPattern(keys, re)) !== null) {
+                    var depth = _.flattenRecursiveStructure(res).length - 1,
                         retValue = val.value;
                     fn = o[res];
 
@@ -466,7 +413,7 @@ var $p = (function () {
         }
     };
     
-    $.flattenRecursiveStructure = function (str) {
+    _.flattenRecursiveStructure = function (str) {
         // Cons(Cons(Cons(x))) --> Cons, Cons, Cons, x
         var arr = [];
 
@@ -477,7 +424,7 @@ var $p = (function () {
      * @param ks Pattern keys
      * @returns {string} Type name
      */
-    _.inferType = function (ks) {
+    $p.inferType = function (ks) {
         var tmap = {
                 'PAR'      : 0,
                 'WC'       : 0,
@@ -492,26 +439,24 @@ var $p = (function () {
         ks.forEach(function (v) {
             if (v === 'true' || v === 'false')                        // Boolean
                 tmap.Boolean++;
-            else if ($.isNum(v))                                      // Number
+            else if (_.isNum(v))                                      // Number
                 tmap.Number++;
             else if (v === null || v === undefined)                   // Falsy values
                 tmap.FVC++;
-            else if ($.isArr(v))                                      // Array
+            else if (_.isArr(v))                                      // Array
                 tmap.Array++;
-            else if ($.PAR_REGEX.test(v))                             // Parameter
+            else if (_.PAR_REGEX.test(v))                             // Parameter
                 tmap.PAR++;
             else if (v === '_')                                       // Wildcard
                 tmap.WC++;
             else {                                                   // ADTs
-                var cons = ''; // Get constructor
-                if (global[cons].superClass_) {
-                    tmap[global[cons.superClass_.constructor.name]]++;
-                }
-                else {
+                var re = /^(\w+)\(.*\)$/,
+                    _match = v.match(re),
+                    cons = _match ? _match[1] : (root[v] && root[v].getVariantName) ? v : null; // Get constructor
 
+                if (cons) {
+                    tmap[root[root[cons].getVariantName()]]++;
                 }
-
-                //if (global[cons] instanceof ... or global[cons].superClass_.constructor.name === ...)
             }
         });
 
@@ -531,7 +476,7 @@ var $p = (function () {
             }
         });
 
-        if (!$.checkOtherZero(maxRet, tmKeys, tmap))
+        if (!_.checkOtherZero(maxRet, tmKeys, tmap))
             throw new PatternMatchingException('Patterns are not consistent (not the same type)');
 
         // Check for redundancies and exhaustiveness (refuse to work with just WC or just PAR)
@@ -544,55 +489,50 @@ var $p = (function () {
      * @param o The object with the patterns and their mappings
      * @returns {Function}
      */
-    _.fun = function (o) {
+    $p.fun = function (o) {
         var ks = Object.keys(o), // Get keys
             t = _.inferType(ks); // Infer type, redundancy and exhaustiveness check
 
         return function (val, bindings) {
             // Check input consistency (e.g. expected input of type...)
-            if (!$.assertType(val, t)) throw new PatternMatchingException('Expected input of type ' + t);
-            return $.match(o, val, bindings, t);
+            if (!_.assertType(val, t)) throw new PatternMatchingException('Expected input of type ' + t);
+            return _.match(o, val, bindings, t);
         };
     };
 
-    _.variant = function(name, obj) {
-        global[name] = function (value) { this.value = value; };
-        global[name].prototype.toString = function () {
-            return this.value;
-        };
+    $p.variant = function(name, obj) {
+        root[name] = function (value) { this.value = value; };
+        root[name].prototype.toString = function () { return this.value; };
+        root[name].prototype.getVariantName = function () { return name; };
 
         var constructors = Object.keys(obj);
         constructors.forEach(function (cons) {
             var val = obj[cons];
 
-            if ($.isEmpty(val)) {
-                global[cons] = new global[name](cons);
+            if (_.isEmpty(val)) {
+                root[cons] = new root[name](cons);
             }
             else {
-                global[cons] = function (value) {
-                    if (!(this instanceof global[cons]))
-                        return new global[cons](value);
+                root[cons] = function (value) {
+                    if (!(this instanceof root[cons]))
+                        return new root[cons](value);
 
-                    console.log(val.value);
-
-                    if (value.constructor.name !== val.value && name !== val.value && val.value != '*') {
+                    if (value.constructor.name !== val.value &&
+                        value.getVariantName &&
+                        value.getVariantName() !== name &&
+                        val.value != '*') {
                         throw Error('Type not correct');
                     }
 
-                    console.log('ciaaao');
-
                     this.value = value;
                 };
-                $.inherits(global[cons], global[name]); // Does not guarantee type checking
-                //global[cons].prototype = Object.create(global[name].prototype);
-                global[cons].prototype.toString = function () {
+                //_.inherits(root[cons], root[name]); // Does not guarantee type checking
+                root[cons].prototype = Object.create(root[name].prototype);
+                root[cons].prototype.toString = function () {
                     return cons + '(' + this.value + ')';
                 };
             }
         });
     };
 
-    _.Any = {};
-
-    return _;
 })();
