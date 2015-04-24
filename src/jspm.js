@@ -6,7 +6,8 @@
 var $p = (function () {
 
     var $ = {}, // Public namespace
-        _ = {}; // Private namespace
+        _ = {}, // Private namespace
+        global = window;
 
     // Polyfills
     // From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/keys
@@ -111,7 +112,7 @@ var $p = (function () {
     }
 
     // Production steps of ECMA-262, Edition 5, 15.4.4.19
-// Reference: http://es5.github.io/#x15.4.4.19
+    // Reference: http://es5.github.io/#x15.4.4.19
     if (!Array.prototype.map) {
 
         Array.prototype.map = function(callback, thisArg) {
@@ -217,11 +218,24 @@ var $p = (function () {
         'CONS2': /^(\w+::\w+)+$/g,
         'CONS3': /^\w+\.\.\w+$/g
     };
-    $.PAR_REGEX = /^__\w+__$/g;
+    $.PAR_REGEX = /^[a-zA-Z]+$/g;
     $.ADT_REGEX = /^\w+:\w+$/g;
 
     $.assertType = function (obj, type) {
-        return obj === null && type === null || obj.constructor.name === type || obj.__variant__ === type;
+        return obj === null && type === null || obj.constructor.name === type || obj instanceof global[type];
+    };
+
+    $.inherits = function(childCtor, parentCtor) {
+        /** @constructor */
+        function tempCtor() {};
+        tempCtor.prototype = parentCtor.prototype;
+        childCtor.superClass_ = parentCtor.prototype;
+        childCtor.prototype = new tempCtor();
+        childCtor.prototype.constructor = childCtor;
+    };
+
+    $.isEmpty = function (obj) {
+        return (Object.getOwnPropertyNames(obj).length === 0);
     };
 
     $.isZero = function (v) {
@@ -234,18 +248,6 @@ var $p = (function () {
         });
 
         return true;
-    };
-
-    $.map = function (arr, fn) {
-        var out = [],
-            len = arr.length,
-            i;
-
-        arr.forEach(function (val) {
-            out.push(fn(val));
-        });
-
-        return out;
     };
 
     $.range = function (low, high) {
@@ -268,17 +270,6 @@ var $p = (function () {
         }
 
         return null;
-    };
-
-    $.checkCons = function (arg, type) {
-        var bexpr = !(type === $p.Any) &&
-                    !(arg === null && type === null) &&
-                    (arg.__variant__ === undefined ?
-                    (arg.constructor !== type)    :
-                    (arg.__variant__ !== type.__name__));
-
-        if (bexpr)
-            throw new PatternMatchingException('Provided wrong type of argument: ' + arg.constructor.name);
     };
 
     $.equalArr = function (a1, a2, cmp) {
@@ -333,7 +324,7 @@ var $p = (function () {
      * @returns {Function}
      */
     $.match = function (o, val, bindings, type) {
-        var fn, parts;
+        var fn, parts, arr;
 
         // Apply bindings
         if (bindings) {
@@ -352,8 +343,11 @@ var $p = (function () {
         if (type === 'Number' || type === 'Boolean') {
             fn = o[val + ''];
 
-            if (fn !== undefined) return fn();
+            if (fn !== undefined) {
+                return fn();
+            }
             else {
+
                 if ((res = $.hasPattern(keys, $.PAR_REGEX)) !== null) {
                     fn = o[res];
                     return fn(val);
@@ -375,7 +369,7 @@ var $p = (function () {
             for (var i = 0, len = keys.length; i < len; i++) {
                 var ptr = keys[i].replace(/\s+/g, '');
 
-                // CONS 1
+                // CONS 1 --> []
                 if ((res = ptr.match($.ARRAY_REGEX.CONS1))) {
                     var carr = ptr.slice(1, -1);
                     fn = o[ptr];
@@ -383,36 +377,41 @@ var $p = (function () {
                     if (carr === '' && val.length === 0)
                         return fn();
                     else {
-                        var arr = carr.split(',');
+                        arr = carr.split(',');
 
                         // Check equality between arr and val
                     }
                 }
-                // CONS 2
-                else if ((res = ptr.match($.ARRAY_REGEX.CONS2))) { // Check x::[] !!!
+                // CONS 2 --> x :: xs
+                else if ((res = ptr.match($.ARRAY_REGEX.CONS2))) {
                     var hds = [],  // heads (individual elements)
                         tail;      // tail
                     parts = res[0].split('::');
 
                     parts.forEach(function (v, i) {
-                        if (i !== parts.length - 1) {
-                            hds.push(val[i]);
-                        }
-                        else {
-                            tail = val.slice(i);
+                        if (v !== '_') {
+                            if (i !== parts.length - 1) {
+                                hds.push(val[i]);
+                            }
+                            else {
+                                tail = val.slice(i);
+                            }
                         }
                     });
 
                     fn = o[ptr];
-                    hds.push(tail);
+                    if (tail) {
+                        hds.push(tail);
+                    }
                     return fn.apply(null, hds);
                 }
                 // CONS 3
                 else if ((res = ptr.match($.ARRAY_REGEX.CONS3))) {
                     parts = res[0].split('..');
                     var low   = parseFloat(parts[0]),
-                        high  = parseFloat(parts[1]),
-                        arr = $.range(low, high);
+                        high  = parseFloat(parts[1]);
+
+                    arr = $.range(low, high);
 
                     if ($.equalArr(val, arr)) {
                         fn = o[res];
@@ -433,25 +432,46 @@ var $p = (function () {
         }
         // ADT PATTERN MATCHING
         else {
-            fn = o[val.__variant__ + ':' + val.__name__];
+            fn = o[val.toString()];
 
             if (fn !== undefined) {
                 var args = val.value;
                 return Array.isArray(args) ? fn.apply(null, args) : fn(val.value);
             }
             else {
-                if ((res = $.hasPattern(keys, $.PAR_REGEX)) !== null) {
-                    fn = o[res];
-                    return fn(val);
-                }
-                else {
-                    fn = o['_'];
+                fn = o['_'];
+                if (fn !== undefined) {
                     return fn();
                 }
+
+                // Patterns like: Cons(x) or Cons(Cons(x))
+                var re = /Cons\((\w+)\)/;
+                // Cons(Cons(Nil))
+                // Cons(x) --> Cons(Nil)
+
+                if ((res = $.hasPattern(keys, re)) !== null) {
+                    var depth = $.flattenRecursiveStructure(res).length - 1,
+                        retValue = val.value;
+                    fn = o[res];
+
+                    for (i = 1; i < depth; i++) {
+                        retValue = retValue.value;
+                    }
+
+                    return fn(retValue);
+                }
+
+                // Throw exception or return null or something else...
             }
         }
     };
+    
+    $.flattenRecursiveStructure = function (str) {
+        // Cons(Cons(Cons(x))) --> Cons, Cons, Cons, x
+        var arr = [];
 
+    };
+    
     /**
      * Type inference, exhaustiveness and redundancies check
      * @param ks Pattern keys
@@ -478,17 +498,21 @@ var $p = (function () {
                 tmap.FVC++;
             else if ($.isArr(v))                                      // Array
                 tmap.Array++;
-            else if ((m = v.match($.ADT_REGEX))) {                    // ADTs
-                var variant = m[0].split(':')[0];
-                if (tmap[variant] === undefined)
-                    tmap[variant] = 1;
-                else
-                    tmap[variant]++;
-            }
             else if ($.PAR_REGEX.test(v))                             // Parameter
                 tmap.PAR++;
             else if (v === '_')                                       // Wildcard
                 tmap.WC++;
+            else {                                                   // ADTs
+                var cons = ''; // Get constructor
+                if (global[cons].superClass_) {
+                    tmap[global[cons.superClass_.constructor.name]]++;
+                }
+                else {
+
+                }
+
+                //if (global[cons] instanceof ... or global[cons].superClass_.constructor.name === ...)
+            }
         });
 
         // Get max of counts
@@ -496,23 +520,23 @@ var $p = (function () {
         //  if the number of values is bigger than 0 and wc or par is 1 then type is valid
         // string:
         //
-        var maxc = -1,
-            maxr = '',
+        var maxTmp = -1,
+            maxRet = '',
             tmKeys = Object.keys(tmap);
 
         tmKeys.forEach(function (t) {
-            if (tmap[t] >= maxc) {
-                maxr = t;
-                maxc = tmap[t];
+            if (tmap[t] >= maxTmp) {
+                maxRet = t;
+                maxTmp = tmap[t];
             }
         });
 
-        if (!$.checkOtherZero(maxr, tmKeys, tmap))
+        if (!$.checkOtherZero(maxRet, tmKeys, tmap))
             throw new PatternMatchingException('Patterns are not consistent (not the same type)');
 
         // Check for redundancies and exhaustiveness (refuse to work with just WC or just PAR)
 
-        return maxr;
+        return maxRet;
     };
 
     /**
@@ -531,63 +555,41 @@ var $p = (function () {
         };
     };
 
-    _.variant = function (name, global) {
-        global = (global === undefined ? false : global);
-        var cons = global ? window : _;
-
-        cons[name] = {
-            '__name__': name,
-            'make': function (o) {
-                var keys = Object.keys(o);
-
-                keys.forEach(function (k) {
-                    var type = o[k];
-
-                    cons[k] = function () {
-                        var v = (arguments.length === 1 ? arguments[0] : Array.prototype.slice.call(arguments));
-
-                        if (!(this instanceof cons[k]))
-                            return new cons[k](v);
-
-                        var tstring = function _tstring (o) {
-                            if (o !== null && o.__variant__ !== undefined) {
-                                if (Array.isArray(o)) {
-                                    return o.map(function (el) {
-                                        return _tstring(el);
-                                    }).join(',');
-                                }
-                                else {
-                                    return o.__name__ + '(' + _tstring(o.value) + ')';
-                                }
-                            }
-                            else {
-                                return o + '';
-                            }
-                        };
-
-                        this.__variant__ = name;
-                        this.__name__ = k;
-                        this.value = v;
-                        this.toString = function () {
-                            return tstring(this);
-                        };
-                        
-                        if (Array.isArray(v) && Array.isArray(type)) {          // More args
-                            for (var i = 0, len = v.length; i < len; i++)
-                                $.checkCons(v[i], type[i]);
-                        }
-                        else if (!Array.isArray(v) && !Array.isArray(type)) {   // One arg
-                            $.checkCons(v, type);
-                        }
-                        else {
-                            throw new PatternMatchingException('Types not compatible');
-                        }
-                    };
-                });
-            }
+    _.variant = function(name, obj) {
+        global[name] = function (value) { this.value = value; };
+        global[name].prototype.toString = function () {
+            return this.value;
         };
 
-        return cons[name];
+        var constructors = Object.keys(obj);
+        constructors.forEach(function (cons) {
+            var val = obj[cons];
+
+            if ($.isEmpty(val)) {
+                global[cons] = new global[name](cons);
+            }
+            else {
+                global[cons] = function (value) {
+                    if (!(this instanceof global[cons]))
+                        return new global[cons](value);
+
+                    console.log(val.value);
+
+                    if (value.constructor.name !== val.value && name !== val.value && val.value != '*') {
+                        throw Error('Type not correct');
+                    }
+
+                    console.log('ciaaao');
+
+                    this.value = value;
+                };
+                $.inherits(global[cons], global[name]); // Does not guarantee type checking
+                //global[cons].prototype = Object.create(global[name].prototype);
+                global[cons].prototype.toString = function () {
+                    return cons + '(' + this.value + ')';
+                };
+            }
+        });
     };
 
     _.Any = {};
